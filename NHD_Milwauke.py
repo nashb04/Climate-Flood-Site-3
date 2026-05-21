@@ -9,7 +9,7 @@ BASE_DIR = Path(__file__).resolve().parent
 gpkg_path = BASE_DIR / "NHD_H_04040003_HU8_GPKG.gpkg"
 
 # Output folder
-output_folder = BASE_DIR / "output"
+output_folder = BASE_DIR / "NHD_Milwauke_output"
 output_folder.mkdir(exist_ok=True)
 
 # Layers
