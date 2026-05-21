@@ -1,0 +1,80 @@
+---
+title: "data_cleaning"
+format: html
+---
+
+```{r}
+library(terra)
+```
+
+```{r}
+# Load impervious surface raster
+fis2024 <- rast(
+  "C:/Users/benwu/OneDrive/Documents/Climate+/data/FIS2024/Annual_NLCD_FctImp_2024_CU_C1V1.tif"
+)
+
+# Load Milwaukee Basin shapefile
+basin <- vect(
+  "C:/Users/benwu/OneDrive/Documents/Climate+/data/globalwatershed.shp"
+)
+
+# Reproject basin to match raster CRS
+basin <- project(basin, crs(fis2024))
+
+# Crop raster to basin extent
+fis2024_basin <- crop(fis2024, basin)
+
+# Mask raster to basin boundary
+fis2024_basin <- mask(fis2024_basin, basin)
+
+# Plot result
+plot(fis2024_basin)
+
+# Save clipped raster
+writeRaster(
+  fis2024_basin,
+  "C:/Users/benwu/OneDrive/Documents/Climate+/data/FIS2024/fis2024_milwaukee_basin.tif",
+  overwrite = TRUE
+)
+```
+
+```{r}
+# Load land cover raster
+lc2024 <- rast(
+  "C:/Users/benwu/OneDrive/Documents/Climate+/data/LC2024/Annual_NLCD_LndCov_2024_CU_C1V1.tif"
+)
+
+# Load watershed shapefile
+basin <- vect(
+  "C:/Users/benwu/OneDrive/Documents/Climate+/data/globalwatershed.shp"
+)
+
+# Reproject basin to match raster CRS
+basin <- project(basin, crs(lc2024))
+
+# Crop raster to basin extent
+lc2024_basin <- crop(lc2024, basin)
+
+# Mask raster to basin boundary
+lc2024_basin <- mask(lc2024_basin, basin)
+
+# Plot result
+plot(lc2024_basin)
+
+# Save clipped raster
+writeRaster(
+  lc2024_basin,
+  "C:/Users/benwu/OneDrive/Documents/Climate+/data/LC2024/lc2024_milwaukee_basin.tif",
+  overwrite = TRUE
+)
+```
+
+
+
+```{r}
+fis_df <- as.data.frame(fis2024_basin, xy = TRUE)
+
+head(fis_df)
+```
+
+
