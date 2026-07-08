@@ -1,0 +1,226 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\hypersetup{colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue}
+
+\title{\textbf{Construction of the Event Rainfall and Antecedent Wetness Variables} \\[4pt]
+\large Methods Note --- from mechanism to a computable, calibrated metric}
+\author{MMSD Wetland--Flood Effectiveness Study (rainfall\_v2)}
+\date{July 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This note documents, end to end, how we construct the event--level rainfall predictors used in
+the event--based flood--response models --- basin--mean event rainfall $P_e$, event rainfall
+volume $V_e$, storm intensity, and antecedent basin wetness --- and why each modeling choice is
+made, with the antecedent-wetness construction anchored to the U.S.\ Weather Bureau's classic
+antecedent precipitation index (API) methodology (Kohler \& Linsley, 1951). Starting from a
+radar-based basin-average rainfall series, we compute event-window rainfall depth and volume, an
+event runoff coefficient, storm intensity, and a decay-weighted cumulative rainfall term. We
+identify and correct an off-by-one indexing error in the original antecedent-wetness lookup, and
+adopt an ``effective rainfall'' formulation that includes the event's own start-day rainfall in
+the decay-weighted sum, consistent with the Weather Bureau's logarithmic-recession antecedent
+index but extended to the day of interest. We then describe how these event-level rainfall
+variables are joined with gauge-level wetland-effectiveness and control variables to build the
+modeling panel, and how they enter as predictors and controls in the phenomenological models fit
+downstream.
+\end{abstract}
+
+\section{Motivation: turning a rainfall record into event-level predictors}
+
+The scientific question addressed by the broader project is whether upstream wetland
+configuration is associated with the flood response measured at a gauge. Answering it requires
+controlling for the rainfall that produced each flood event, since runoff response is strongly
+driven by how much rain fell, how intense it was, and how wet the basin already was before the
+storm began. This note documents the construction of that rainfall side of the model: for every
+gauge $j$ and storm event $e$ (as delineated upstream in the event-identification step), we
+build
+
+\begin{itemize}[nosep]
+  \item $P_{e}$ --- basin-mean rainfall depth over the event window;
+  \item $V_{e}$ --- the corresponding rainfall volume, used to form an event runoff coefficient;
+  \item $\text{max\_daily}$ --- peak one-day rainfall intensity within the event window;
+  \item $P_{\text{eff}}$ --- a decay-weighted cumulative rainfall term representing antecedent
+        basin wetness at the start of the event.
+\end{itemize}
+
+The guiding principle, as in the companion wetland-effectiveness note, is to avoid inventing
+variables: the antecedent-wetness construction is borrowed from an authoritative published
+method rather than an arbitrary index.
+
+\section{Literature review: the antecedent precipitation index}
+
+The construction of $P_{\text{eff}}$ follows the U.S.\ Weather Bureau's Research Paper No.\ 34,
+\emph{Predicting the Runoff from Storm Rainfall} (Kohler \& Linsley, 1951), which documents the
+technique used at the Weather Bureau's River Forecast Centers for evaluating antecedent
+conditions in flood forecasting. The paper reviews several candidate moisture indices --- days
+since last rain, discharge at the beginning of the storm, and antecedent precipitation --- and
+concludes that antecedent precipitation is the most broadly applicable, ``provided the index is
+properly derived and is used in conjunction with season of the year or temperature''
+(Kohler \& Linsley, 1951, p.\ 2).
+
+The paper defines the antecedent precipitation index (API) generally as
+\begin{equation}
+  I = b_1 P_1 + b_2 P_2 + b_3 P_3 + \dots + b_i P_i,
+  \label{eq:api-general}
+\end{equation}
+where $P_i$ is the precipitation occurring $i$ days prior to the storm under consideration and
+$b_i$ is a weight assumed to decay with time. The paper notes an important refinement: rather
+than a reciprocal weight ($b_i = 1/i$), a \emph{logarithmic recession} is preferable for
+day-to-day computation, i.e.\ during a dry spell
+\begin{equation}
+  I_t = I_0\, k^{t}, \qquad k^{}\text{(unitless recession factor)},
+  \label{eq:api-recession}
+\end{equation}
+so that each day's index is simply the previous day's index multiplied by $k$, with that day's
+rainfall added when it occurs. The paper reports that $k$ is not a critical parameter and that
+values in the range $0.85$--$0.90$ are appropriate across most of the eastern and central United
+States. Our implementation adopts $k = 0.90$, at the upper (slower-decay) end of that range, and
+a 30-day summation window.
+
+\section{Design decision: antecedent index vs.\ effective cumulative rainfall}
+
+Equation~\eqref{eq:api-general}, exactly as stated in Kohler \& Linsley (1951), sums
+precipitation from $i=1$ days prior onward --- it deliberately excludes the storm's own rainfall,
+since the index is meant to represent basin wetness \emph{before} the event begins. Our first
+implementation followed this definition exactly.
+
+In reviewing the variable for use as a model control, we adopted a related but distinct
+convention that is also long-standing in hydrologic practice: an \emph{effective cumulative
+rainfall} term that folds the event's own start-day rainfall into the same decay-weighted sum,
+i.e.\ extending the summation to include an $i=0$ term at full weight:
+\begin{equation}
+  P_{\text{eff}}(t) = P(t) + k\,P(t-1) + k^2 P(t-2) + \dots + k^{30} P(t-30).
+  \label{eq:peff}
+\end{equation}
+This is a deliberate extension beyond the literal Kohler \& Linsley definition (which is
+strictly $i \geq 1$): we flag this explicitly rather than attribute it to the cited paper, since
+the paper's own index is antecedent-only. The practical effect of the change is that the
+variable now represents cumulative decay-weighted rainfall \emph{through and including} the
+event's start day, rather than strictly the wetness state existing immediately before it. We
+made this choice because it is the more commonly used convention in comparable modeling
+pipelines and because, in combination with the correction described in \S4, it removes an
+ambiguity in what date the lookup should reference.
+
+\section{Correcting an indexing error in the antecedent-wetness lookup}
+
+While reviewing the event-pairing code, we identified an off-by-one error in how the
+antecedent-wetness value was retrieved for each event. The index series itself
+(Eq.~\eqref{eq:api-general}, before the change described in \S3) was computed correctly, but the
+per-event lookup subtracted an additional day before reading the series:
+\begin{quote}
+\ttfamily
+prev = d0 - 1 day \\
+api\_v = API series value at prev
+\end{quote}
+Because the original API series already excludes the lookup day's own rainfall by construction,
+subtracting a further day meant the single most heavily weighted, most recent term (the day
+immediately preceding the event) was silently dropped from every event's antecedent-wetness
+value. In effect, the stored variable reflected basin wetness as of two days before the event
+rather than one.
+
+Adopting the effective-rainfall formulation of Eq.~\eqref{eq:peff} resolves this cleanly: the
+lookup is now taken directly at the event's start date $d_0$, with no additional day subtracted,
+since $P_{\text{eff}}(d_0)$ is now defined to include $d_0$'s own rainfall by design. The fix
+therefore consists of (i) extending the summation in the index series to include the $i=0$ term,
+and (ii) removing the extra day offset in the event-level lookup. No other rainfall variable
+($P_e$, $V_e$, runoff coefficient, or intensity) was affected by this error, since each of those
+is computed by direct summation over the event window rather than through the lagged index
+series.
+
+\section{Constructing each rainfall variable}
+
+\subsection{Basin-mean daily rainfall}
+Daily rainfall is drawn from NCEP Stage IV radar-gauge precipitation (IEM IEMRE web service,
+0.125\textdegree\ grid, 1997--present), area-averaged over each catchment by sampling a dense
+grid of interior points, snapping each to its nearest 0.125\textdegree\ lattice node, and
+weighting nodes by their share of interior sample points. This produces one basin-mean daily
+rainfall series per gauge.
+
+\subsection{Event rainfall depth and volume ($P_e$, $V_e$)}
+For each event window $[t_{\text{start}}, t_{\text{end}}]$ (as delineated in the upstream
+event-identification step), $P_e$ is the sum of basin-mean daily rainfall over the window, and a
+separate sum to the event's peak, $P_{\text{topeak}}$, is retained. Rainfall volume is
+$V_e = (P_e / 1000)\times A$, where $A$ is catchment area in m$^2$. Dividing the event's measured
+quick-flow runoff volume by $V_e$ gives an event runoff coefficient.
+
+\subsection{Storm intensity}
+Peak one-day rainfall intensity within the event window is retained (\texttt{max\_daily\_mm}) as
+a simple intensity proxy, since two events of equal depth and equal antecedent wetness can
+produce different peak responses depending on how concentrated the rainfall was in time.
+
+\subsection{Antecedent / effective cumulative rainfall ($P_{\text{eff}}$)}
+Computed per Eq.~\eqref{eq:peff} with $k=0.90$ over a 30-day window, looked up directly at each
+event's start date as described in \S4. This is the term intended to control for basin wetness
+entering each storm.
+
+\section{Downstream use: assembling the modeling panel and fitting the models}
+
+The event-level rainfall variables documented here are not consumed directly by the final
+models; they first pass through two further assembly and modeling steps, summarized here for
+completeness.
+
+\subsection{Panel assembly}
+A separate script joins the per-event rainfall table (one row per gauge-event, containing $P_e$,
+$V_e$, runoff coefficient, $P_{\text{eff}}$, and intensity) with two gauge-level tables: a
+wetland-effectiveness table (contributing $W$-variants and wetland storage $S_w$; see the
+companion wetland-effectiveness note) and a static-controls table (drainage area, slopes,
+saturated conductivity, soil sand fraction, available water storage, and imperviousness
+interpolated to each event's year). It then derives modeling terms directly from the rainfall
+and wetland variables already constructed --- most notably a saturation ratio $V_e/S_w$ relating
+event rainfall volume to gauge-level wetland storage capacity, a winter-season flag, a flag for
+runoff coefficients exceeding one (a data-quality check), and log-transformed versions of peak
+discharge, $P_e$, $V_e$, drainage area, wetland storage, and wetland effectiveness. Each
+gauge-event is assigned a unique identifier, and a usability flag restricts the panel to events
+with $P_e > 1$~mm and a finite runoff coefficient. The result is a single gauge-event panel used
+as the modeling dataset, alongside a gauge-level collinearity diagnostic among the candidate
+predictors.
+
+\subsection{Model fitting}
+The panel is used to fit a sequence of four nested phenomenological models relating a flood
+response outcome (log peak discharge, Richards--Baker flashiness, or hydrograph width) to
+standardized rainfall ($P$, built from $\log P_e$), wetland effectiveness ($W$, an
+intensity-weighted wetland fraction), their interaction ($W{:}P$, a peak-shaving term), a
+saturation term ($S = \log(V_e/S_w)$), and its interaction with wetland effectiveness
+($W{:}S$), together with gauge-level controls. The antecedent-wetness variable constructed here
+enters as one of those controls (alongside drainage area, imperviousness, saturated conductivity,
+channel slope, and a winter flag), so that the wetland and rainfall-interaction terms of primary
+interest are estimated net of antecedent basin wetness. Models are estimated both as
+gauge-random-intercept mixed models and as OLS with gauge-clustered standard errors, and are
+subjected to two falsification checks: a gauge-level wetland-effectiveness permutation placebo,
+and leave-one-gauge-out refitting to assess coefficient stability.
+
+\section{What remains}
+
+Two items are worth flagging for completeness, mirroring the candor of the companion
+wetland-effectiveness note. First, the switch from a strict antecedent-only index to an
+effective-cumulative-rainfall formulation (\S3) is a deliberate deviation from the literal
+Kohler \& Linsley (1951) definition, adopted for convenience and internal consistency rather than
+because the cited paper itself recommends including the event's own start-day rainfall; readers
+should not treat Eq.~\eqref{eq:peff} as a verbatim reproduction of the Weather Bureau method.
+Second, the recession factor $k=0.90$ and the 30-day window are within, but at the upper edge of,
+the range the source literature reports as broadly applicable ($k=0.85$--$0.90$); we have not
+independently recalibrated $k$ against the observed events used in this project, and doing so
+against event-level runoff response would be a natural next check.
+
+\section*{References}
+\begin{enumerate}[label={[\arabic*]},leftmargin=2.2em]
+  \item Kohler, M.\ A., \& Linsley, R.\ K.\ (1951). \emph{Predicting the Runoff from Storm
+  Rainfall}. U.S.\ Weather Bureau Research Paper No.\ 34. Washington, D.C.: U.S.\ Department of
+  Commerce, Weather Bureau.
+  \item MMSD Wetland--Flood study (2026). \emph{Construction of the cumulative wetland
+  effectiveness variable $W$: methods and literature review} (companion note).
+  \item Sherman, L.\ K.\ (1932). Streamflow from rainfall by the unit-graph method.
+  \emph{Engineering News-Record}, 108(14), 501--505.
+  \item Linsley, R.\ K., Kohler, M.\ A., \& Paulhus, J.\ L.\ H.\ (1949). \emph{Applied Hydrology}.
+  New York: McGraw-Hill.
+\end{enumerate}
+
+\end{document}

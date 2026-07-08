@@ -1,0 +1,159 @@
+\documentclass[11pt]{article}
+\usepackage[margin=0.9in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{xcolor}
+\definecolor{impcol}{RGB}{176,0,32}
+\newcommand{\imp}{\textcolor{impcol}{\textbf{Improve:}}\ }
+\newcommand{\con}{\textbf{Constructed:}\ }
+\setlist[description]{style=unboxed,leftmargin=1.4em,itemsep=3pt,topsep=3pt}
+\newcommand{\var}[1]{\textbf{\texttt{#1}}}
+
+\title{\textbf{Wetland--Flood Event Model: Variable Construction Reference}\\[3pt]
+\large ``Mark's Model'' pipeline --- how every variable is built, and where to improve it}
+\author{MMSD Wetland--Flood Effectiveness Study}
+\date{July 2026}
+
+\begin{document}
+\maketitle
+\vspace{-1.2em}
+\noindent\small This document (i) summarizes the seven pipeline steps and (ii) documents
+\emph{exactly how each variable is constructed}, with a flagged improvement lever for each ---
+the intended starting point for the variable--refinement pass. \normalsize
+
+\section{The seven steps (at a glance)}
+\begin{table}[htbp]\centering\small
+\begin{tabular}{clll}
+\toprule
+\# & Step & One line & Script \\
+\midrule
+1 & Event extraction & 15-min flow $\to$ Eckhardt baseflow $\to$ peak picking $\to$ per-event $Y$ & \texttt{build\_events\_flow.py} \\
+2 & Event rainfall & Stage IV radar QPE, basin-averaged $\to$ $P_e,V_e$, runoff coeff., API & \texttt{build\_events\_rain.py} \\
+3 & Wetland $W$, $S_w$ & NWI polygons $\to$ $\sum A\,C\,M\,f(T)$; Volume--Area storage & \texttt{build\_wetland\_nwi.py} \\
+4 & Controls & drainage area, slope, impervious, $K_{\text{sat}}$/AWS/sand & \texttt{build\_controls.py} \\
+5 & Panel assembly & join to (gauge$\times$event); derived terms; collinearity & \texttt{build\_panel.py} \\
+6 & Models 1--4 & mixed-effects / clustered SE; standardize; VIF/placebo/LOGO & \texttt{fit\_models.py} \\
+7 & Wild cluster bootstrap & honest 9-cluster inference (512 exact sign vectors) & \texttt{wild\_bootstrap.py} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{A. Outcome variables $Y$ (Step 1)}
+All $Y$ are built on the hourly hydrograph; they inherit the event-segmentation machinery below.
+
+\paragraph{Event segmentation (prerequisite for every $Y$).}
+\con 15-min discharge (USGS 00060) $\to$ hourly mean. Baseflow via the Eckhardt recursive filter
+$b_t=\big[(1-\text{BFI}_{\max})a\,b_{t-1}+(1-a)\text{BFI}_{\max}Q_t\big]/(1-a\,\text{BFI}_{\max})$
+with $a=0.98^{1/24}$, $\text{BFI}_{\max}=0.60$; quickflow $=\max(Q-b,0)$. Peaks via
+\texttt{find\_peaks} (prominence $=\max(0.02\,q_{\max},P_{95})$, min separation 24\,h);
+event window at 90\% of peak prominence; events with $>$20\% interpolated gap dropped.
+\imp The four knobs $\{\text{BFI}_{\max},\ \text{prominence},\ 24\text{h separation},\ 90\%\text{ window}\}$
+define ``what counts as a storm'' --- run a sensitivity analysis; optionally compare an alternative
+baseflow method (UKIH/sliding-minimum).
+
+\begin{description}
+\item[\var{Qp\_cfs} --- peak discharge (primary).] \con window $\max(Q)$. \imp clean; leave as is.
+\item[\var{peak\_stage\_ft} --- peak stage.] \con window $\max(\text{gage height})$. \imp only 2017+
+(two gauges 2007+); using it as an outcome shrinks the sample; could back-fill from a rating curve.
+\item[\var{time\_to\_peak\_hr} --- time to peak.] \con $t_{\text{peak}}-t_{\text{start}}$ (rise-to-peak,
+\emph{internal} to the hydrograph). \imp \emph{highest-value fix}: redefine as
+$t_{\text{peak}}-t_{\text{rain centroid}}$ (true basin lag) once rainfall timing is joined.
+\item[\var{hydro\_width\_hr} --- hydrograph width.] \con full width at half prominence (FWHM) of quickflow.
+\imp switch to duration-above-threshold or multi-height widths; FWHM under-measures multi-peak events.
+\item[\var{recession\_k\_per\_hr}, \var{recession\_time\_hr}.] \con slope of $\ln Q$ (peak$\to$end) and
+$t_{\text{end}}-t_{\text{peak}}$. \imp single-exponential linear fit; fit only the stable tail or a two-stage recession.
+\item[\var{rb\_flashiness} --- Richards--Baker.] \con $\sum|\Delta Q|/\sum Q$ over the event window.
+\imp literature R--B is annual/whole-period; ours is event-window --- redefine to match if comparing to literature.
+\item[\var{quick\_vol\_m3}, \var{total\_vol\_m3} --- runoff volume.] \con $\sum(\text{quick or }Q)\times3600\times0.0283$
+(cfs$\to$m$^3$s$^{-1}\times$hr). \imp \texttt{quick\_vol} depends on the baseflow parameters above.
+\item[\var{dur\_above\_q99\_hr} --- threshold exposure.] \con hours with $Q>$ that gauge's own 99th-pct flow.
+\imp the threshold is a \emph{placeholder}; replace with the NWS flood/bankfull flow or an Atlas-14 return-period flow.
+\end{description}
+
+\section{B. Rainfall / event forcing (Step 2)}
+\begin{description}
+\item[\var{P\_e\_mm} --- event rainfall depth.] \con IEM Stage IV \texttt{daily\_precip\_in}
+($0.125^{\circ}\!\approx\!12$\,km, daily). Basin average: sample points at $0.02^{\circ}$ inside the
+catchment $\to$ snap to the $0.125^{\circ}$ lattice $\to$ weight by sample count per node; sum daily
+rain over $[t_{\text{start}},t_{\text{end}}]$ ($\times25.4$ in$\to$mm). \imp \emph{top priority}:
+(a) upgrade to native 4\,km Stage IV or 1\,km MRMS (12\,km smears convective cells over $<$50\,km$^2$ basins,
+1 pixel each); (b) use hourly rather than daily (removes the $\sim$5\,h UTC/local-day offset); (c) narrow the
+window to ``$N$\,h before peak'' so multi-day windows on large rivers don't merge storms.
+\item[\var{V\_e\_m3} --- rainfall volume.] \con $P_e/1000\times$ catchment area. \imp follows $P_e$.
+\item[\var{runoff\_coeff} --- event runoff coefficient.] \con \texttt{quick\_vol\_m3}$/V_e$.
+\imp 1--8\% of events exceed 1 (snowmelt / rain-on-snow / rain underestimate) --- add a snow model or
+screen winter; recompute after the rainfall upgrade.
+\item[\var{api\_30\_mm} --- antecedent precip index.] \con $\sum_{n=1}^{30}0.9^{n}P(\text{start}-1-n)$.
+\imp the decay $k=0.9$ and 30-day window are defaults --- calibrate; or use an SSURGO soil-moisture / prior-baseflow proxy.
+\item[\var{max\_daily\_mm} --- intensity.] \con max daily rain in the window. \imp for true intensity move to
+hourly intensity + NOAA Atlas-14 return period (not yet computed).
+\item[\var{storm\_resp\_ratio} $=Q_p/P_e$, \var{peakstage\_resp} $=$ stage$/P_e$.] \con ratios. \imp follow their parts.
+\end{description}
+
+\section{C. Wetland effectiveness $W$ and storage $S_w$ (Step 3) --- main improvement zone}
+\begin{description}
+\item[\var{A\_i} --- wetland area.] \con USFWS NWI polygon area (EPSG:32616), tiled fetch, clipped to catchment.
+\imp merge/replace with the finer Wisconsin Wetland Inventory; optionally filter by type (drop open water).
+\item[\var{T\_ij} --- travel time wetland$\to$gauge.] \con sampled at the wetland \emph{centroid} from the
+routing surface $T_{j}$ (10\,m); NaN/$\le$0 fall back to $\tau$. \imp \emph{core issue}: absolute travel time is
+\emph{uncalibrated} (SLOPE\_MIN, Manning $n$, channel celerity are defaults) $\Rightarrow$ only a relative index.
+Calibrate celerity from observed lag/tracers so a fixed $\tau$ becomes physical; sample polygon-minimum $T$ (nearest exit) instead of centroid.
+\item[\var{C\_i} --- connectivity.] \con near-channel: $1$ if distance to the network ($\text{acc}>0.5$\,km$^2$)
+$<100$\,m (\texttt{C\_bin}); graded variant $e^{-d/100}$; distance via Euclidean transform, sampled at centroid.
+\imp adopt the EPA three-class connectivity (surface / shallow-GW / deep-GW); sensitivity on the 100\,m buffer; use nearest polygon edge.
+\item[\var{M\_i} --- Cowardin type modifier.] \con from NWI \texttt{ATTRIBUTE}: emergent $1.0$;
+forested/scrub-shrub $0.8$; open-water/riverine $0.5$; lacustrine $0.3$; else $0.7$. \imp this is a
+\emph{judgment table} --- best upgrade: use HGM (hydrogeomorphic) class (floodplain vs.\ isolated depression have
+measured peak-attenuation differences) or literature weights; optionally layer in water regime.
+\item[\var{f(T)}, $\tau$ --- decay kernel.] \con $f_{\exp}=e^{-T/\tau}$, $f_{\text{harm}}=1/(1+T/\tau)$,
+$\tau=$ catchment-median $T$ (adaptive, because $T$ is uncalibrated). \imp after calibrating $T$, switch to a
+physical $\tau$ (connectivity literature) and model-compare exp vs.\ harmonic.
+\item[\var{W\_j} --- cumulative effectiveness (treatment).] \con $\sum_i A_i C_i M_i f(T_{ij})$; six stored
+variants (\texttt{W\_exp} primary, \texttt{W\_harm}, \texttt{W\_exp\_noC}, \texttt{W\_exp\_noM},
+\texttt{W\_exp\_grad}, \texttt{W\_area}). Modeling uses the intensive $W_n=W_{\exp}/\text{area}$.
+\imp each multiplier ($A,C,M,f$) is independently upgradable; $W_{\exp}$ is extensive and collinear with DA ($r{=}0.89$),
+hence normalized --- try alternative normalizations (per channel length, per upstream area).
+\item[\var{Sw\_va\_m3} --- storage capacity.] \con Volume--Area power law $V_i=0.05\,A_i^{1.2}$, $S_w=\sum V_i$;
+a DEM depression-volume cross-check is uninformative here. \imp constants $c{=}0.05,\beta{=}1.2$ are
+literature-range defaults (order of magnitude only) --- fit a Wisconsin-specific $V$--$A$, or use raw-LiDAR
+depression-fill volume (\emph{not} the routing-conditioned DEM, which was built to remove depressions);
+consider type-specific $c,\beta$.
+\end{description}
+
+\section{D. Control variables (Step 4)}
+\begin{description}
+\item[\var{DA\_km2} --- drainage area.] \con catchment polygon area (validated $\pm$5\% vs.\ NWIS). \imp clean.
+\item[\var{basin\_slope}, \var{chan\_slope}.] \con $\sqrt{g_x^2+g_y^2}$ on the 3DEP 10\,m DEM, averaged over all
+catchment cells / over channel cells ($\text{acc}>5000$). \imp channel slope could be the main-stem longitudinal
+profile; add basin relief, drainage density.
+\item[\var{imp\_pct} --- impervious fraction.] \con NLCD impervious (\texttt{nlcd\_bygeom}) for 2001/2011/2021,
+basin mean, linearly interpolated to each event's year. \imp move to Annual NLCD for a true urbanization
+trajectory; add engineered storage (CSO/storm-sewer, detention, Deep Tunnel) --- currently unmodeled.
+\item[\var{ksat\_log} --- infiltration.] \con POLARIS \texttt{ksat\_0\_5cm} basin mean ($\log_{10}$\,cm\,h$^{-1}$).
+\imp surface layer only; add deeper layers, or use SSURGO Hydrologic Soil Group (A--D), which the workflow explicitly requests.
+\item[\var{sand\_pct}, \var{aws\_mm}.] \con POLARIS \texttt{sand\_0\_5cm}; gNATSGO \texttt{aws0\_100}, basin means.
+\imp collinear with $K_{\text{sat}}$ and the urban--rural gradient --- keep one in the model.
+\end{description}
+
+\section{E. Derived modeling terms (Steps 5--6)}
+\begin{description}
+\item[\var{Wn}] $=W_{\exp}/(\text{DA}\times10^6)$ --- intensive treatment (breaks $W$--DA collinearity).
+\item[\var{sat}] $=\log(V_e/S_w)$ --- saturation ratio. \quad
+\var{WP}$=z(W)\!\cdot\!z(P)$, \ \var{WS}$=z(W)\!\cdot\!z(\text{sat})$ --- interactions.
+\item[Standardization] all predictors $z$-scored; $\log$ taken for $Q_p,P_e,V_e,\text{DA},S_w,W_{\exp}$.
+\item[\var{usable}] $=(P_e>1)\wedge(\text{runoff\_coeff finite})$.
+\imp the interaction terms are currently the \emph{only} identified signal (within-gauge variation) ---
+prioritize the quality of $W$, $P$, and $\text{sat}$ that feed them.
+\end{description}
+
+\section*{Priority order for the refinement pass}
+\begin{enumerate}[leftmargin=1.6em,itemsep=2pt]
+\item \textbf{$P_e$} --- native 4\,km / 1\,km hourly radar (biggest effect on every event metric).
+\item \textbf{$M_i$} --- replace the judgment table with an HGM classification.
+\item \textbf{$T_{ij}$ / $\tau$} --- calibrate absolute travel time (celerity) so a physical $\tau$ works.
+\item \textbf{$S_w$} --- Wisconsin-specific Volume--Area or LiDAR depression volume.
+\item \textbf{\texttt{time\_to\_peak}} --- redefine as rainfall-centroid-to-peak basin lag.
+\end{enumerate}
+\end{document}

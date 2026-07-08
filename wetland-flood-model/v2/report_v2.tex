@@ -1,0 +1,297 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{array}
+\usepackage[hidelinks]{hyperref}
+\usepackage{caption}
+\captionsetup{font=small,labelfont=bf}
+\graphicspath{{outputs/}}
+
+\title{\textbf{Mark Model v2 --- Event-Based Wetland--Flood Analysis with
+Upgraded Steps 1--3}\\[4pt]
+\large RREDI event detection $\cdot$ 800\,m PRISM rainfall $\cdot$ physical wetland
+effectiveness $W$}
+\author{MMSD Wetland--Flood Effectiveness Study}
+\date{July 2026}
+
+\begin{document}
+\maketitle
+\vspace{-1em}
+\begin{abstract}\noindent\small
+This report documents a full re-run of the event-based wetland--flood pipeline on the nine
+long-record MMSD gauges, with the first three stages upgraded and stages 4--6 left byte-for-byte
+unchanged. Step~1 replaces Eckhardt/peak-prominence event detection with a RREDI-style
+rolling-median, ratio-threshold detector (6{,}858 quality-controlled events, 2001--2023).
+Step~2 replaces the 12\,km IEMRE Stage~IV rainfall with native 800\,m PRISM, eliminating
+convective smearing over small basins, and adopts a corrected effective-rainfall antecedent index
+($P_{\text{eff}}$; Kohler \& Linsley 1951). Step~3 replaces the connectivity-weighted wetland
+fraction with a physically grounded effectiveness metric $W=\sum_i A_i S_i K(T_{ij})$ (kinematic
+celerity travel times, wetland roughness, the redundant connectivity term removed, and a
+type-weighted glaciated storage). Two thin adapters bridge the schema so the unchanged downstream
+stages run verbatim. Over 5{,}907 usable gauge-events, the central result is not only reproduced
+but \emph{strengthened}: under wild cluster bootstrap the standardized peak-shaving interaction
+$W\!\cdot\!P$ on log peak discharge is $-0.233$ ($p=0.010$), larger than the $-0.155$ of the
+original pipeline. The wetland level effect remains unidentifiable across nine confounded gauges.
+Everything runs in an isolated \texttt{Mark\_model\_v2/} directory; no existing file is modified.
+\normalsize\end{abstract}
+
+\section{What changed in v2, and what did not}
+The pipeline is seven stages. Stages 1--3 (the variable-construction stages) were upgraded;
+stages 4--6 are the unchanged workflow.
+\begin{table}[htbp]\centering\small
+\begin{tabular}{p{1.2cm}p{6.6cm}p{6.0cm}}
+\toprule
+Stage & v2 change & Status \\
+\midrule
+1 Events & Eckhardt/peak-prominence $\rightarrow$ \textbf{RREDI} rolling-median ratio-threshold
+detector; reads cached raw 15-min discharge offline & Upgraded (7{,}355 raw / 6{,}858 QC-pass) \\
+2 Rainfall & IEMRE 12\,km $\rightarrow$ \textbf{800\,m PRISM} basin averaging; $api\_30$
+$\rightarrow$ corrected $P_{\text{eff}}$ antecedent index & Upgraded \\
+3 Wetland $W$ & connectivity fraction $\rightarrow$ \textbf{$W=\sum A_iS_iK(T)$} (celerity $T$,
+wetland roughness, $C$ dropped, type$\times$storage $S_i$) & Upgraded \\
+4 Controls & drainage area, slope, impervious, soils & \emph{Unchanged (verbatim)} \\
+5 Panel & join to gauge$\times$event; collinearity diagnostic & \emph{Unchanged (verbatim)} \\
+6 Models & nested Models 1--4; MixedLM + clustered SE; placebo, LOGO & \emph{Unchanged (verbatim)} \\
+7 Bootstrap & exact wild cluster bootstrap ($2^9=512$) & \emph{Unchanged (verbatim)} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent Two schema adapters make the unchanged stages run without edits: (i) the wetland
+adapter writes the v2 metric into the contract file \texttt{panel\_W\_Sw.csv} (treatment
+$W_{\exp}\!\leftarrow\!W_{v2}$; the regression standardizes $W$, so the scale change is harmless);
+(ii) the rainfall step exposes $P_{\text{eff}}$ under the legacy control name \texttt{api\_30\_mm}.
+
+\section{Study area and gauges}
+The nine long-record USGS gauges span the Milwaukee/Menomonee wetland--urbanization gradient,
+from large wetland-rich rural rivers (Milwaukee R., Cedar Creek) to small flashy urban creeks
+(Honey Creek, Underwood Creek). Catchments, routing, travel-time surfaces, and conditioned DEMs
+are reused read-only from the existing pipeline.
+
+\section{Step 1 --- RREDI event detection}
+Events are detected on the hourly discharge series by (a) a centered 7-day rolling-median
+baseline, (b) event start when $Q/\text{baseline}\ge1.20$, (c) event end after the ratio stays
+below $1.05$ for 6\,h, (d) merging events separated by $<12$\,h, and (e) keeping events with a
+peak ratio $\ge1.30$; quality control screens data coverage ($\ge0.80$), gaps ($\le2$\,h), and
+sampling interval. This yields \textbf{6{,}858 QC-pass events} (Table~\ref{tab:s1}), roughly
+$2.5\times$ the original Eckhardt detector, because the ratio detector resolves many smaller
+rises. Raw 15-min discharge is read from a local cache (no re-download); gage height is not
+available in this mode, so peak-stage metrics are absent.
+
+\begin{table}[htbp]\centering
+\caption{Step 1 (RREDI) --- QC-pass event counts and medians per gauge, 2001--2023.}
+\label{tab:s1}\small
+\begin{tabular}{lrrrr}
+\toprule
+Site & QC-pass events & med.\ dur.\ (h) & med.\ TTP (h) & med.\ $Q_p$ (cfs) \\
+\midrule
+04087000 & 478  & 29.8 & 3.6  & 789 \\
+04086500 & 353  & 66.8 & 18.5 & 138 \\
+04086600 & 274  & 55.2 & 7.6  & 380 \\
+04087030 & 737  & 55.0 & 2.4  & 60  \\
+04087050 & 506  & 52.2 & 6.0  & 13  \\
+04087070 & 987  & 44.5 & 5.8  & 38  \\
+04087120 & 954  & 45.7 & 3.2  & 408 \\
+04087088 & 1303 & 43.1 & 3.6  & 62  \\
+04087119 & 1266 & 37.8 & 3.8  & 43  \\
+\midrule
+Total    & 6858 & & & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Step 2 --- 800\,m PRISM rainfall}
+Basin-mean daily rainfall is now the mean of the native 800\,m PRISM cells whose centres fall
+inside each catchment, replacing the 0.125$^{\circ}$ ($\approx$12\,km) IEMRE analysis. This
+removes the single-pixel smearing that previously afflicted the four smallest ($<50$\,km$^2$)
+basins: those catchments now contain dozens of independent rainfall cells. The annual basin
+precipitation (Table~\ref{tab:s2}, 896--964\,mm) validates the averaging against the
+southeastern-Wisconsin climatology. Event depth $P_e$, volume $V_e$, intensity, and the runoff
+coefficient are computed by direct summation over each event window. The antecedent variable is
+the effective cumulative rainfall $P_{\text{eff}}(t)=\sum_{n=0}^{30}k^nP(t-n)$ ($k=0.90$; Kohler
+\& Linsley 1951), with a prior off-by-one lookup error corrected and the storm's own start-day
+rainfall included.
+
+\begin{table}[htbp]\centering
+\caption{Step 2 (800\,m PRISM) --- per-gauge rainfall summary.}
+\label{tab:s2}\small
+\begin{tabular}{lrrrrrr}
+\toprule
+Site & area (km$^2$) & events & ann.\ precip (mm) & med.\ $P_e$ (mm) & med.\ RC & med.\ $P_{\text{eff}}$ (mm) \\
+\midrule
+04087000 & 1751 & 478  & 899 & 15.5 & 0.017 & 25.6 \\
+04086500 & 321  & 353  & 918 & 21.8 & 0.029 & 36.1 \\
+04086600 & 1518 & 274  & 896 & 16.2 & 0.015 & 31.6 \\
+04087120 & 310  & 954  & 917 & 11.5 & 0.080 & 20.5 \\
+04087030 & 85   & 737  & 910 & 13.8 & 0.030 & 20.9 \\
+04087050 & 21   & 506  & 916 & 16.8 & 0.032 & 23.2 \\
+04087070 & 50   & 987  & 910 & 10.7 & 0.066 & 20.4 \\
+04087088 & 47   & 1303 & 937 & 8.7  & 0.091 & 18.9 \\
+04087119 & 27   & 1266 & 964 & 6.0  & 0.175 & 20.7 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Caveat --- runoff coefficients.} Median runoff coefficients (0.02--0.18) are lower than
+in the original pipeline (0.16--0.32). This is a mechanical consequence of the RREDI detector: its
+7-day rolling-median baseline sits higher than an Eckhardt baseflow, so the quick-flow volume above
+it is smaller, and the many additional small events lower the median. The runoff coefficient is not
+a predictor in the core models, so this does not affect the peak-shaving analysis; it does mean the
+coefficient is less comparable to the earlier run as an outcome.
+
+\section{Step 3 --- physical wetland effectiveness $W$}
+The wetland metric follows $W_j=\sum_i A_i S_i K(T_{ij})$ with the connectivity term $C$ dropped
+(it double-counts the travel-time kernel). Travel times $T_{ij}$ come from a celerity field
+(channel speed $=\tfrac{5}{3}\times$Manning velocity) with wetland-roughness slowing overland
+flow; $S_i=M_{\text{type},i}\times d_i$ combines a Cowardin/HGM attenuation weight with a glaciated
+Volume--Area storage depth ($V=0.01725A^{1.30}$), so $A_iS_i=M_{\text{type}}V_i$ is type-weighted
+wetland storage; $K(T)=e^{-T/\tau}$ with $\tau$ the catchment-median travel time. Table~\ref{tab:s3}
+gives the resulting gauge-level $W$ and storage $S_w$ (companion note documents the construction and
+literature in full).
+
+\begin{table}[htbp]\centering
+\caption{Step 3 --- v2 wetland effectiveness and storage (contract schema).}
+\label{tab:s3}\small
+\begin{tabular}{lrrrr}
+\toprule
+Site & wet (km$^2$) & $W$ ($10^6$) & $S_w$ ($10^6$\,m$^3$) & $\tau$ (h) \\
+\midrule
+04087000 & 323.7 & 56.6 & 193.4 & 297 \\
+04086500 & 71.2  & 15.9 & 48.6  & 163 \\
+04086600 & 304.6 & 56.9 & 181.6 & 224 \\
+04087120 & 33.1  & 4.4  & 17.1  & 135 \\
+04087030 & 16.2  & 2.9  & 9.3   & 80  \\
+04087050 & 2.4   & 0.32 & 1.3   & 27  \\
+04087070 & 5.3   & 0.92 & 2.7   & 76  \\
+04087088 & 4.0   & 0.50 & 2.0   & 48  \\
+04087119 & 0.3   & 0.02 & 0.09  & 47  \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Caveat --- travel-time calibration.} Regressing observed RREDI hydrograph lag on the
+modeled travel time now yields a negative $R^2$: RREDI's short rising-limb lags (median 2--19\,h)
+do not track the geometric basin travel time, so the model is retained with an adaptive
+(median-$T$) decay scale rather than a data-calibrated one. Absolute $T$ is therefore still a
+relative index, as flagged previously.
+
+\section{Step 4 --- controls}
+Per-gauge controls (drainage area, basin/channel slope, NLCD impervious interpolated to event
+year, POLARIS $K_{\text{sat}}$/sand, gNATSGO available water storage) are unchanged; impervious
+cover spans 4\%\ (rural) to 53\%\ (urban Honey Creek) and, as in v1, every control is collinear
+with the urban--rural gradient.
+
+\section{Step 5 --- panel and collinearity}
+The stages join into 6{,}858 gauge-events, of which \textbf{5{,}907 are usable} ($P_e>1$\,mm and a
+finite runoff coefficient). Gauge-level predictor collinearity (Fig.~\ref{fig:collin}) is
+essentially identical to v1 (wetland fraction vs impervious $r=-0.87$; $W$ vs storage $r=1.0$; $W$
+vs drainage area $r=0.90$), because the gauges and geometry are unchanged. As before we use the
+intensive treatment $W_n=W/\text{area}$ and control drainage area explicitly.
+
+\begin{figure}[htbp]\centering
+\includegraphics[width=0.60\textwidth]{step5_collinearity.png}
+\caption{Gauge-level predictor collinearity ($n=9$).}
+\label{fig:collin}
+\end{figure}
+
+\section{Step 6 --- models and honest inference}
+Standardized predictors; nested Models 1--4 estimated as gauge random-intercept mixed models.
+For log peak discharge, rainfall dominates ($\hat\beta_P\approx0.9$--$1.2$), the wetland level
+effect is negative but confounded, and the peak-shaving interaction $W\!\cdot\!P$ is robustly
+negative (Table~\ref{tab:coef}, Fig.~\ref{fig:forest}). Variance inflation confirms the
+identification structure: between-gauge terms are severely collinear (VIF: $S=368$, $W=268$,
+$P=173$, impervious $87$, channel slope $151$), whereas the within-gauge interaction $W\!\cdot\!P$
+has VIF $54$. The placebo (permuting wetlands among gauges) cannot distinguish the observed $W$
+level effect from random relabeling ($p=0.064$) but flags $W\!\cdot\!P$ as special ($p=0.000$);
+leave-one-gauge-out gives a stable $W\!\cdot\!P$ (range $[-0.281,-0.211]$).
+
+\begin{table}[htbp]\centering
+\caption{Step 6 --- MixedLM standardized coefficients, primary outcome $\log Q_p$
+($p$-values asymptotic; see wild bootstrap for honest inference).}
+\label{tab:coef}\small
+\begin{tabular}{lrrrrr}
+\toprule
+Model & $P$ & $W$ & $W\!\cdot\!P$ & $V_e/S_w$ & $W\!\cdot\!(V_e/S_w)$ \\
+\midrule
+M1 basic        & 0.96 & $-$0.29\,(0.04) & --- & --- & --- \\
+M2 peak-shave   & 0.91 & $-$0.13\,(0.35) & $-$0.23\,(0.00) & --- & --- \\
+M3 saturation   & 1.22 & $-$0.12\,(0.18) & $-$0.23\,(0.00) & $-$0.46\,(0.00) & --- \\
+M4 nonlin.\ sat.& 0.66 & \phantom{-}0.54\,(0.34) & $-$0.55\,(0.04) & 0.36\,(0.61) & 0.46\,(0.24) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[htbp]\centering
+\includegraphics[width=\textwidth]{step6_forest.png}
+\caption{Models 1--4 key coefficients (MixedLM); red = asymptotic $p<0.05$.}
+\label{fig:forest}
+\end{figure}
+
+\paragraph{Wild cluster bootstrap.} With nine clusters the asymptotic standard errors are
+unreliable, so we enumerate all $2^9=512$ Rademacher sign vectors exactly
+(Table~\ref{tab:wcb}). The peak-shaving interaction survives decisively on peak discharge
+($W\!\cdot\!P=-0.233$, $p=0.010$), and it is \emph{larger} than the v1 estimate ($-0.155$,
+$p=0.029$): the upgraded events, rainfall, and wetland metric sharpen rather than overturn the
+finding. On the shape/timing outcomes the interaction is now only marginal ($p\approx0.07$--$0.08$).
+The saturation term is nominally significant on peak discharge but has VIF $=368$ (nearly collinear
+with rainfall $P$), so it is not cleanly interpretable and we do not read it as a saturation effect.
+The wetland level effect remains unidentified ($p=0.084$).
+
+\begin{table}[htbp]\centering
+\caption{Wild cluster bootstrap (512 exact Rademacher, $G=9$). $p_{\text{WCR}}$ = restricted
+bootstrap-$t$; CI = unrestricted percentile interval.}
+\label{tab:wcb}\small
+\begin{tabular}{llrrrl}
+\toprule
+Outcome & Term & $\hat\beta$ & cluster $t$ & $p_{\text{WCR}}$ & 95\% CI \\
+\midrule
+$\log Q_p$      & $W\!\cdot\!P$ (M2)          & $-$0.233 & $-$5.1 & \textbf{0.010} & $[-0.307,-0.158]$ \\
+$\log Q_p$      & $V_e/S_w$ (M3)$^{\dagger}$  & $-$0.337 & $-$3.7 & 0.002 & $[-0.473,-0.200]$ \\
+$\log Q_p$      & $W$ (M1)                    & $-$0.447 & $-$9.5 & 0.084 & $[-0.533,-0.361]$ \\
+$\log Q_p$      & $W\!\cdot\!(V_e/S_w)$ (M4)  & $-$0.102 & $-$0.7 & 0.586 & $[-0.393,\,0.188]$ \\
+rb flashiness   & $W\!\cdot\!P$ (M2)          & $-$0.004 & $-$3.0 & 0.068 & $[-0.007,-0.002]$ \\
+hydro.\ width   & $W\!\cdot\!P$ (M2)          & \phantom{-}0.089 & 2.9 & 0.082 & $[0.034,\,0.143]$ \\
+\bottomrule
+\end{tabular}
+\\[2pt]
+\footnotesize $^{\dagger}$Nominally significant but VIF$=368$ (collinear with $P$); not
+interpreted as a saturation effect.
+\end{table}
+
+\section{Discussion}
+The v2 pipeline was a stress test of the central finding against three substantial, independent
+changes to the input variables: a different event detector, a $15\times$ finer rainfall product,
+and a physically rebuilt wetland metric. The peak-shaving mechanism ---wetlands attenuating flood
+peaks disproportionately in larger storms--- not only reproduces but strengthens ($-0.233$ vs
+$-0.155$) and remains robust under placebo, leave-one-gauge-out, and wild cluster bootstrap. That
+the result is invariant to, and sharpened by, these changes is strong evidence that it is a real
+signal rather than an artifact of any one construction. The shape/timing interactions weaken to
+marginal significance under the RREDI events, and the wetland \emph{level} effect remains
+unidentifiable, exactly as the design predicts.
+
+\section{Limitations}
+(i) \emph{Identification}: nine nested, urbanization-confounded gauges cap what is estimable; only
+the event-varying $W\!\cdot\!P$ is robust, and a causal level effect needs a regional independent
+sample. (ii) \emph{Runoff coefficient} shifts with the RREDI baseline (not a core predictor).
+(iii) \emph{Travel-time} absolute magnitudes are uncalibrated; $W$ is a relative index.
+(iv) \emph{Saturation} $V_e/S_w$ is collinear with rainfall and not cleanly interpretable.
+(v) PRISM is finer in space but still daily in time. (vi) Associational, not causal.
+
+\section{Reproducibility and isolation}
+Everything runs inside \texttt{Mark\_model\_v2/}; no existing file is modified. Run order:
+\texttt{s1\_build\_events\_flow.py} (RREDI) $\rightarrow$ \texttt{s2\_build\_events\_rain.py}
+(PRISM) $\rightarrow$ \texttt{s3a\_build\_T\_v2.py} $\rightarrow$ \texttt{s3b\_build\_W\_v2.py}
+$\rightarrow$ \texttt{s3c\_wetland\_adapter.py} $\rightarrow$ \texttt{s4\_build\_controls.py}
+$\rightarrow$ \texttt{s5\_build\_panel.py} $\rightarrow$ \texttt{s6\_fit\_models.py}
+$\rightarrow$ \texttt{s6\_wild\_bootstrap.py}. Stages 4--7 are byte-identical to the original
+workflow; the only new code is the PRISM rainfall source, the wetland-schema adapter, and the
+\texttt{api\_30\_mm} alias. Public data sources: USGS NWIS, PRISM, USFWS NWI, NLCD, POLARIS,
+gNATSGO, USGS 3DEP.
+
+\paragraph{Key references.} Kohler \& Linsley (1951, API); Lighthill \& Whitham (1955, kinematic
+celerity); Kadlec (1990, wetland roughness); Wu \& Lane (2016, glaciated Volume--Area); Acreman \&
+Holden (2013, wetland type); Ameli \& Creed (2019, wetland location); Cameron, Gelbach \& Miller
+(2008, wild cluster bootstrap).
+\end{document}

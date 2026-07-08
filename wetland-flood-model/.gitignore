@@ -1,0 +1,19 @@
+# Regenerable data & caches — never commit (run the scripts to rebuild)
+data/
+cache/
+nwi/
+800m_data/
+usgs_discharge_15min_raw/
+iemre_nodes/
+__pycache__/
+node_modules/
+_mplconfig/
+.DS_Store
+*.tif
+*.tiff
+*.parquet
+*.gpkg
+*.npy
+*.gz
+*.sqlite
+# keep: *.py *.tex *.pdf *.md *.png (QA) *.csv (small outputs) *.txt

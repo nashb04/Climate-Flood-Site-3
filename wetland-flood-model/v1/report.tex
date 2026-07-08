@@ -1,0 +1,380 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{array}
+\usepackage{siunitx}
+\usepackage[hidelinks]{hyperref}
+\usepackage{caption}
+\captionsetup{font=small,labelfont=bf}
+\graphicspath{{outputs/}}
+\newcommand{\Wj}{W_{j}}
+\newcommand{\Swj}{S_{w,j}}
+\sisetup{detect-weight=true,round-mode=places,round-precision=2}
+
+\title{\textbf{A Mechanistically--Informed, Event--Based Phenomenological Model
+of Wetland Effects on Flood Response} \\[4pt]
+\large MMSD (Milwaukee) Watersheds --- Data, Methods, and Results}
+\author{Wetland--Flood Effectiveness Study \\ \texttt{Mark's Model} pipeline}
+\date{July 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent
+We operationalize the discussion note's ``mechanistically--informed phenomenological
+model'' of how wetland configuration relates to flood response into an executable
+event--based pipeline for nine long--record USGS gauges in the Milwaukee Metropolitan
+Sewerage District (MMSD) area. Rather than annual aggregates, the unit of analysis is the
+\emph{(gauge $\times$ storm event)}. For each of 2{,}699 storm events (2001--2026) we
+extract hydrograph--response metrics from 15--minute streamflow, pair them with radar
+(Stage~IV) event rainfall, and regress them on a cumulative wetland--effectiveness index
+$\Wj=\sum_i A_i C_i M_i f(T_{ij})$, storage capacity $\Swj$, precipitation, and urbanization/
+soil/terrain controls, through a progression of four nested models. Every predictor is
+anchored to a published method or public dataset. With only nine (nested, confounded) gauges
+we use gauge random effects, gauge--clustered standard errors, and---because nine clusters
+render asymptotic standard errors unreliable---an exact wild cluster bootstrap. The wetland
+\emph{level} effect is not identifiable (indistinguishable from random gauge relabeling), but
+two mechanism--specific, event--identified signals survive placebo, leave--one--gauge--out,
+and wild--cluster--bootstrap falsification: wetlands shave flood \emph{peaks} more strongly in
+larger storms, and they \emph{widen} storm hydrographs more in larger storms. Linking discharge
+to economic damages is intentionally left out of scope.
+\end{abstract}
+
+\section{Modeling framework}
+Following the discussion note and the accompanying workflow, we take the
+\textbf{statistical / phenomenological} route rather than a calibrated process model
+(SWAT/HEC--HMS): we regress observed event--response metrics on wetland configuration and
+rainfall, borrowing variable \emph{definitions} from the process literature so that no
+non--authoritative parameters are invented. The full specification is
+\begin{equation}
+Y_{j,e} = \beta_0 + \beta_1 P_e + \beta_2 \Wj + \beta_3 (\Wj\!\cdot\!P_e)
+   + \beta_4 \frac{V_e}{\Swj} + \beta_5\!\left(\Wj\!\cdot\!\tfrac{V_e}{\Swj}\right)
+   + X_{j,e}\gamma + u_j + \varepsilon_{j,e},
+\label{eq:full}
+\end{equation}
+where $Y_{j,e}$ is a response metric at gauge $j$ for storm $e$, $P_e$ storm precipitation,
+$V_e$ storm rainfall volume, $X$ controls, and $u_j$ a gauge effect. We progress through
+increasingly complex models to manage collinearity (Sec.~\ref{sec:models}).
+
+\section{Study area and gauge network}
+The study units are nine long--record USGS discharge gauges spanning the wetland/urbanization
+gradient of the Milwaukee and Menomonee river systems (Table~\ref{tab:events}). They range
+from large, slow, wetland--rich rural rivers (Milwaukee River, Cedar Creek) to small, flashy,
+heavily urbanized creeks (Honey Creek, Underwood Creek). Contributing catchments, the
+river network, per--cell travel--time surfaces $T_{ij}$, and conditioned DEMs are reused from
+the existing routing pipeline (WhiteBox breaching + \texttt{pysheds} routing on a 10\,m,
+EPSG:32616 master grid).
+
+\section{Data and variable construction}
+
+\subsection{Event hydrograph metrics $Y_{j,e}$ (streamflow)}
+We retrieve 15--minute instantaneous discharge (USGS parameter 00060) and gage height
+(00065) via \texttt{dataretrieval}, from 2001--10 (the pre--roll before the Stage~IV radar
+era) to present, aggregate to hourly, and separate baseflow with the Eckhardt (2005)
+recursive digital filter (hourly recession constant $a=0.98^{1/24}$, $\mathrm{BFI}_{\max}=0.60$).
+Storm events are detected as prominent peaks in the quickflow series; event windows are set
+at $90\%$ of peak prominence and the hydrograph width at the half--prominence full width.
+Per event we compute peak discharge $Q_p$, peak stage, time--to--peak, hydrograph width,
+recession constant, quickflow volume, Richards--Baker (2004) flashiness over the event
+window, and hours above the gauge's 99th percentile flow. Gage height is available only
+from 2017 (seven gauges) or 2007 (two gauges), so stage metrics are populated where present
+and retained for the (out--of--scope) damage linkage. This yields \textbf{2{,}699 events}
+(Table~\ref{tab:events}); event counts scale inversely with basin size, as expected.
+
+\begin{table}[htbp]\centering
+\caption{Step~1 --- event extraction. Median values per gauge over 2001--2026.}
+\label{tab:events}
+\small
+\begin{tabular}{llrrrrr}
+\toprule
+Site & Description & $n$ events & with stage & med.\ dur.\ (h) & med.\ TTP (h) & med.\ $Q_p$ (cfs) \\
+\midrule
+04087000 & Milwaukee R.\ at Milwaukee   & 126 & 53  & 197 & 32.5 & 2756 \\
+04086600 & Milwaukee R.\ nr Cedarburg   & 62  & 29  & 310 & 66.0 & 2145 \\
+04086500 & Cedar Creek                  & 77  & 33  & 230 & 64.0 & 575  \\
+04087030 & Menomonee R.\ at M.\ Falls   & 164 & 68  & 127 & 11.0 & 203  \\
+04087050 & Little Menomonee nr Freistadt& 204 & 95  & 82  & 11.0 & 69   \\
+04087070 & Little Menomonee at Milw.    & 322 & 273 & 59  & 8.0  & 156  \\
+04087120 & Menomonee R.\ at Wauwatosa   & 504 & 196 & 35  & 3.0  & 984  \\
+04087088 & Underwood Creek              & 504 & 183 & 15  & 3.0  & 281  \\
+04087119 & Honey Creek                  & 736 & 535 & 10  & 2.0  & 218  \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Event rainfall $P_e$, $V_e$, API (radar QPE)}
+Basin--average storm rainfall is derived from NCEP Stage~IV radar--gauge precipitation
+(1997+, $0.125^{\circ}\approx12$\,km) served as daily analyses by the Iowa Environmental
+Mesonet (IEMRE) web service. For each catchment we place uniform sample points, snap them to
+the analysis lattice, and area--weight the nodes; nodes are cached and shared across
+catchments. Per event we obtain the window rainfall depth $P_e$, volume $V_e=P_e\cdot\text{area}$,
+the event runoff coefficient (quickflow volume $/\,V_e$), storm/peak--stage response ratios,
+a 30--day antecedent precipitation index ($k=0.9$), and the peak daily intensity. The
+basin--mean climatology (887\,mm\,yr$^{-1}$ at the main gauge) and event runoff coefficients
+(median 0.16--0.32) validate the extraction (Table~\ref{tab:rain}). The 12\,km grid smears
+convective cells over the smallest ($<50$\,km$^2$) basins, where a single node covers the
+catchment---a documented limitation, upgradeable to native 4\,km Stage~IV or 1\,km MRMS.
+
+\begin{table}[htbp]\centering
+\caption{Step~2 --- radar event rainfall. RC = event runoff coefficient.}
+\label{tab:rain}
+\small
+\begin{tabular}{lrrrrrr}
+\toprule
+Site & area (km$^2$) & nodes & $n$ events & med.\ $P_e$ (mm) & med.\ RC & med.\ API (mm) \\
+\midrule
+04087000 & 1751 & 25 & 126 & 48.2 & 0.218 & 19.4 \\
+04086500 & 321  & 6  & 77  & 71.0 & 0.317 & 18.6 \\
+04086600 & 1518 & 21 & 62  & 75.4 & 0.267 & 17.1 \\
+04087120 & 310  & 6  & 504 & 21.8 & 0.181 & 20.7 \\
+04087030 & 85   & 3  & 164 & 46.0 & 0.266 & 20.7 \\
+04087050 & 21   & 1  & 204 & 29.5 & 0.314 & 21.0 \\
+04087070 & 50   & 2  & 322 & 27.7 & 0.289 & 20.8 \\
+04087088 & 47   & 3  & 504 & 20.4 & 0.161 & 20.7 \\
+04087119 & 27   & 1  & 736 & 16.0 & 0.254 & 19.3 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Cumulative wetland effectiveness $\Wj$ and storage $\Swj$}
+Wetland polygons are the USFWS National Wetlands Inventory (NWI), retrieved by tiled bounding
+--box queries from the FWS ArcGIS service (tiling avoids server timeouts on large basins),
+deduplicated and clipped to each catchment (41{,}092 polygons). For each wetland $i$ we compute
+area $A_i$; travel time $T_{ij}$ to the gauge (sampled from the routing surface $T_{j}$);
+distance to the channel network ($\mathrm{acc}>0.5$\,km$^2$), giving a near--channel
+connectivity indicator $C_i$ ($<100$\,m); and a Cowardin type modifier $M_i$ (emergent marsh
+$1.0$; forested/scrub--shrub $0.8$; open water/riverine $0.5$; lacustrine $0.3$). The
+cumulative effectiveness is
+\begin{equation}
+\Wj=\sum_{i} A_i\, C_i\, M_i\, f(T_{ij}), \qquad
+f(T)=e^{-T/\tau}\ \text{or}\ \frac{1}{1+T/\tau},
+\end{equation}
+with $\tau$ set to the catchment--median travel time (absolute $T$ is uncalibrated, so a fixed
+$\tau$ would be degenerate; $\Wj$ is therefore a \emph{relative}, cross--basin--comparable
+index). Ablation variants (dropping $C$, dropping $M$, harmonic decay, graded $C$) are retained.
+Storage uses the published Volume--Area power law $V_i=cA_i^{\beta}$ ($c=0.05$, $\beta=1.2$;
+order--of--magnitude, pending a Wisconsin--specific fit); a DEM depression--volume cross--check
+is uninformative here because the conditioned DEM was purpose--built to remove depressions.
+The NWI wetland area at the main gauge (324\,km$^2$) matches the independent NLCD estimate
+(325\,km$^2$). The wetland gradient is exactly the one the analysis needs: rural basins
+18--22\% wetland, urban creeks 1--11\% (Table~\ref{tab:wsw}).
+
+\begin{table}[htbp]\centering
+\caption{Step~3 --- NWI wetland effectiveness and storage. $W_{\exp}$ in m$^2$; $S_w$ Volume--Area.}
+\label{tab:wsw}
+\small
+\begin{tabular}{lrrrrrr}
+\toprule
+Site & $n$ wet & wet (km$^2$) & wet frac & near frac & $W_{\exp}$ ($10^6$) & $S_w$ depth (mm) \\
+\midrule
+04087000 & 16826 & 323.7 & 0.185 & 0.52 & 51.4 & 94.9 \\
+04086500 & 3710  & 71.2  & 0.222 & 0.48 & 12.0 & 123.7 \\
+04086600 & 14666 & 304.6 & 0.201 & 0.53 & 51.1 & 103.2 \\
+04087120 & 2802  & 33.1  & 0.107 & 0.54 & 5.3  & 50.1 \\
+04087030 & 1016  & 16.2  & 0.190 & 0.44 & 2.5  & 95.0 \\
+04087050 & 176   & 2.4   & 0.112 & 0.53 & 0.5  & 53.9 \\
+04087070 & 439   & 5.3   & 0.106 & 0.62 & 1.3  & 48.8 \\
+04087088 & 375   & 4.0   & 0.084 & 0.57 & 0.7  & 38.7 \\
+04087119 & 82    & 0.3   & 0.012 & 0.71 & 0.06 & 3.7 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Control variables}
+To separate the wetland signal from urbanization, soils, terrain, and size we compute per
+catchment: drainage area $\mathrm{DA}$; basin and channel slope from the 3DEP DEM; NLCD
+impervious fraction (2001/2011/2021, interpolated to each event's year); POLARIS surface
+$K_{\text{sat}}$ and sand fraction; and gNATSGO available water storage. Impervious cover
+spans 4.3\% (rural Cedar Creek) to 52.9\% (urban Honey Creek) and trends upward through time;
+urban basins also have lower $K_{\text{sat}}$, less sand, and steeper channels
+(Table~\ref{tab:ctrl}).
+
+\begin{table}[htbp]\centering
+\caption{Step~4 --- control variables. $K_{\text{sat}}$ in $\log_{10}$(cm\,h$^{-1}$).}
+\label{tab:ctrl}
+\small
+\begin{tabular}{lrrrrrrr}
+\toprule
+Site & DA (km$^2$) & basin slope & chan slope & imp'01 (\%) & imp'21 (\%) & $K_{\text{sat}}$ & AWS (mm) \\
+\midrule
+04087000 & 1751 & 0.047 & 0.013 & 6.7  & 7.6  & 0.380 & 164 \\
+04086500 & 321  & 0.040 & 0.012 & 3.4  & 4.8  & 0.372 & 176 \\
+04086600 & 1518 & 0.049 & 0.012 & 3.5  & 4.3  & 0.383 & 167 \\
+04087120 & 310  & 0.038 & 0.020 & 26.8 & 29.7 & 0.333 & 159 \\
+04087030 & 85   & 0.034 & 0.013 & 13.6 & 16.4 & 0.337 & 180 \\
+04087050 & 21   & 0.033 & 0.013 & 4.2  & 5.6  & 0.316 & 169 \\
+04087070 & 50   & 0.034 & 0.016 & 19.0 & 20.8 & 0.328 & 154 \\
+04087088 & 47   & 0.043 & 0.024 & 31.0 & 33.5 & 0.351 & 154 \\
+04087119 & 27   & 0.033 & 0.030 & 51.6 & 52.9 & 0.296 & 144 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Panel assembly and collinearity}
+The four blocks are joined into a single $(\text{gauge}\times\text{event})$ table of
+\textbf{2{,}699 rows (2{,}685 usable}, with real storm rainfall and finite runoff
+coefficient). The gauge--level predictors are strongly collinear
+(Fig.~\ref{fig:collin}): wetland fraction versus impervious cover $r=-0.87$; the extensive
+$W_{\exp}$ is nearly identical to storage $S_w$ ($r=1.0$) and highly correlated with drainage
+area ($r=0.89$); impervious versus channel slope $r=0.97$. Two consequences drive the
+modeling: (i) we use the \emph{intensive} treatment $W_n=W_{\exp}/\text{area}$ (an
+effectiveness--weighted wetland fraction, less area--collinear) and control $\mathrm{DA}$
+explicitly; (ii) because $W_n$ is gauge--constant, the wetland \emph{level} effect is a
+purely cross--sectional nine--point contrast confounded with urbanization, whereas the
+event--varying interaction and saturation terms carry within--gauge identification.
+
+\begin{figure}[htbp]\centering
+\includegraphics[width=0.62\textwidth]{step5_collinearity.png}
+\caption{Gauge--level predictor correlations ($n=9$). Wetland measures are strongly
+anti--correlated with impervious cover and channel slope, and $W_{\exp}$ tracks storage and
+drainage area.}
+\label{fig:collin}
+\end{figure}
+
+\section{Statistical models}\label{sec:models}
+All predictors are standardized. We fit the nested progression of Eq.~\eqref{eq:full}:
+\begin{itemize}\itemsep2pt
+\item \textbf{M1 (basic wetland effect):} $Y\sim P + W + X$. \emph{Do more effective wetlands
+reduce peaks?} ($\beta_2$)
+\item \textbf{M2 (peak--shaving):} $+\,W\!\cdot\!P$. \emph{Do wetlands matter more in large
+storms?} ($\beta_3<0$)
+\item \textbf{M3 (saturation):} $+\,\log(V_e/S_w)$. \emph{Does response rise once storm
+volume exceeds storage?}
+\item \textbf{M4 (nonlinear saturation):} $+\,W\!\cdot\!(V_e/S_w)$. \emph{Does wetland
+effectiveness decline past capacity?}
+\end{itemize}
+Controls $X$ are $\log\mathrm{DA}$, impervious, $K_{\text{sat}}$, channel slope, API, and a
+winter flag. Each model is estimated with (a) a gauge random--intercept mixed model and
+(b) OLS with gauge--clustered standard errors. Outcomes are log peak discharge (primary),
+Richards--Baker flashiness, and log hydrograph width. Falsification follows the workflow:
+variance inflation factors, a placebo that permutes wetlands across gauges, and
+leave--one--gauge--out refitting.
+
+\section{Results}
+
+\subsection{Coefficients and asymptotic diagnostics}
+For log peak discharge, precipitation dominates ($\hat\beta_P\approx0.42$ per SD, a sanity
+check). The wetland \emph{level} effect $\hat\beta_2$ is essentially zero and insignificant
+in every model; the \textbf{peak--shaving interaction $W\!\cdot\!P$ is negative and stable}
+(Table~\ref{tab:coef}, Fig.~\ref{fig:forest}). Variance inflation confirms the identification
+structure: the between--gauge terms are severely collinear ($\mathrm{VIF}$: channel slope 175,
+impervious 76, saturation 72, $W$ 50), whereas the within--gauge interaction $W\!\cdot\!P$ has
+$\mathrm{VIF}=5$. The placebo (permuting wetlands among gauges, 500 draws) cannot distinguish
+the observed $W$ effect from random relabeling ($p=0.85$) but flags the interaction as special
+($p=0.006$); leave--one--gauge--out gives an unstable, sign--flipping $W$ (range
+$[-0.69,+0.22]$) but a rock--stable $W\!\cdot\!P$ (range $[-0.174,-0.142]$).
+
+\begin{table}[htbp]\centering
+\caption{Step~6 --- MixedLM (gauge random effect) standardized coefficients, primary outcome
+$\log Q_p$.}
+\label{tab:coef}
+\small
+\begin{tabular}{lrrrrr}
+\toprule
+Model & $P$ & $W$ & $W\!\cdot\!P$ & $V_e/S_w$ & $W\!\cdot\!(V_e/S_w)$ \\
+\midrule
+M1 basic        & 0.421 & \phantom{-}0.044\,(0.89) & --- & --- & --- \\
+M2 peak--shave  & 0.413 & $-$0.020\,(0.77) & $-$0.153\,(0.00) & --- & --- \\
+M3 saturation   & 0.413 & $-$0.026\,(0.70) & $-$0.153\,(0.00) & 0.000\,(1.00) & --- \\
+M4 nonlin.\ sat.& 0.525 & $-$0.072\,(0.34) & $-$0.113\,(0.00) & $-$0.164\,(0.07) & $-$0.068\,(0.04) \\
+\bottomrule
+\end{tabular}
+\\[3pt]
+\footnotesize $p$--values in parentheses (asymptotic; see wild bootstrap below for honest
+few--cluster inference).
+\end{table}
+
+\begin{figure}[htbp]\centering
+\includegraphics[width=\textwidth]{step6_forest.png}
+\caption{Models~1--4 key coefficients (MixedLM); red = asymptotic $p<0.05$. The peak--shaving
+interaction $W\!\cdot\!P$ is consistently negative for peak discharge and positive for
+hydrograph width.}
+\label{fig:forest}
+\end{figure}
+
+\subsection{Wild cluster bootstrap (honest few--cluster inference)}
+With only nine clusters, cluster--robust asymptotic standard errors are unreliable. We apply
+the Cameron--Gelbach--Miller wild cluster bootstrap, enumerating \emph{all} $2^9=512$
+Rademacher sign vectors exactly (restricted bootstrap--$t$ for $p$--values; unrestricted for
+confidence intervals). This is decisive: it prunes false positives that the asymptotic
+$t$--statistics had inflated (e.g.\ the flashiness $W\!\cdot\!P$ moves from $p=0.005$ to
+$p=0.90$; the primary $W\!\cdot\!P$ $t=-17$ corresponds to an honest $p=0.004$). Two
+mechanism--specific findings survive (Table~\ref{tab:wcb}):
+\begin{enumerate}\itemsep2pt
+\item \textbf{Peak discharge: $W\!\cdot\!P$, $p=0.004$}, 95\% CI $[-0.169,-0.137]$ ---
+wetlands attenuate flood peaks more strongly in larger storms.
+\item \textbf{Hydrograph width: $W\!\cdot\!P$ ($p=0.025$) and saturation $V_e/S_w$ ($p=0.031$)}
+--- wetlands widen storm hydrographs more in larger storms, and hydrograph shape responds to
+the storm--to--storage ratio.
+\end{enumerate}
+All flashiness effects, all Model~4 nonlinear--saturation terms, and every wetland \emph{level}
+effect fail to survive the bootstrap.
+
+\begin{table}[htbp]\centering
+\caption{Wild cluster bootstrap (512 exact Rademacher sign vectors, $G=9$). $p_{\text{WCR}}$
+is the restricted bootstrap--$t$ $p$--value; CI is the unrestricted percentile interval.}
+\label{tab:wcb}
+\small
+\begin{tabular}{llrrrl}
+\toprule
+Outcome & Term & $\hat\beta$ & cluster $t$ & $p_{\text{WCR}}$ & 95\% CI \\
+\midrule
+$\log Q_p$      & $W\!\cdot\!P$ (M2)          & $-$0.153 & $-$17.1 & \textbf{0.004} & $[-0.169,-0.137]$ \\
+$\log Q_p$      & $W$ (M1)                    & $-$0.209 & $-$1.5  & 0.406 & $[-0.439,\,0.022]$ \\
+$\log Q_p$      & $W\!\cdot\!(V_e/S_w)$ (M4)  & $-$0.067 & $-$2.7  & 0.133 & $[-0.112,-0.022]$ \\
+hydro.\ width   & $W\!\cdot\!P$ (M2)          & $\phantom{-}$0.238 & 4.8 & \textbf{0.025} & $[0.149,\,0.328]$ \\
+hydro.\ width   & $V_e/S_w$ (M3)              & $\phantom{-}$0.759 & 5.2 & \textbf{0.031} & $[0.508,\,1.010]$ \\
+hydro.\ width   & $W$ (M1)                    & $\phantom{-}$1.794 & 4.4 & 0.100 & $[1.052,\,2.535]$ \\
+flashiness      & $W\!\cdot\!P$ (M2)          & $\phantom{-}$0.002 & 0.2 & 0.897 & $[-0.013,\,0.017]$ \\
+flashiness      & $V_e/S_w$ (M3)              & $\phantom{-}$0.068 & 4.5 & 0.205 & $[0.042,\,0.093]$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Discussion}
+The results align closely with the discussion note's hypotheses while remaining honest about
+what nine confounded gauges can support. The naive question ``do wetland--rich basins have
+lower peaks?'' cannot be answered here: the wetland level effect is collinear with
+urbanization ($r=-0.87$), and every falsification test---placebo, leave--one--gauge--out, and
+the wild cluster bootstrap---marks it as unidentified. The \emph{event--identified} mechanism
+tests, however, are robust and physically coherent. The negative $W\!\cdot\!P$ on peak
+discharge is precisely the peak--shaving hypothesis ($\beta_3<0$): the marginal peak per unit
+rainfall is smaller in wetland--rich basins, and disproportionately so as storms grow. The
+positive $W\!\cdot\!P$ and saturation effects on hydrograph width express the same physics in
+the time domain---wetlands store and release water more slowly, broadening the hydrograph---
+consistent with the note's expectation that wetlands affect \emph{shape and timing} more than
+runoff \emph{volume} (indeed no robust runoff--coefficient or flashiness effect emerges).
+
+\section{Limitations}
+(i) Nine nested, strongly confounded gauges: only within--gauge, event--varying terms are
+identified; the wetland level effect is not. (ii) Nine clusters: even the bootstrap is weak
+for cluster--invariant regressors; inference is trustworthy for the interaction/saturation
+terms. (iii) Rainfall at $12$\,km smears convective storms over the smallest basins.
+(iv) Storage $S_w$ uses literature--range Volume--Area constants (order of magnitude) and
+absolute travel times are uncalibrated, so $\Wj$ is a relative index. (v) The analysis is
+associational, not causal. (vi) Engineered storage (detention basins, the Deep Tunnel) and
+dam removals are not yet explicitly modeled.
+
+\section{Conclusions and next steps}
+An end--to--end event--based pipeline (nine gauges, 2{,}699 storms, 2001--2026) reproduces the
+mechanistically--informed model and delivers two falsification--surviving findings: wetlands
+shave flood peaks and widen hydrographs more strongly in larger storms. To move from a
+robust \emph{method demonstration} toward an identifiable wetland \emph{level} effect, the
+decisive next step is to expand to a regional sample of many \emph{independent} gauged
+catchments spanning a wetland gradient not collinear with urbanization; secondary refinements
+include native 4\,km/1\,km radar for the small basins, NOAA Atlas~14 return periods, a
+Wisconsin--specific storage calibration, and a wild cluster bootstrap on the enlarged sample.
+Linking discharge/stage to flood damages (depth--damage or NFIP claims) is deliberately left
+to the study team.
+
+\paragraph{Reproducibility.} The pipeline is six scripts run in sequence:
+\texttt{build\_events\_flow.py} (events), \texttt{build\_events\_rain.py} (radar rainfall),
+\texttt{build\_wetland\_nwi.py} ($W$, $S_w$), \texttt{build\_controls.py} (controls),
+\texttt{build\_panel.py} (panel), \texttt{fit\_models.py} (Models 1--4), plus
+\texttt{wild\_bootstrap.py}. All data sources are public: USGS NWIS, IEM Stage~IV, USFWS NWI,
+NLCD, POLARIS, gNATSGO, and USGS 3DEP.
+
+\end{document}

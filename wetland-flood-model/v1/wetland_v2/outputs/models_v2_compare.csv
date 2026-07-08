@@ -1,0 +1,7 @@
+W,outcome,WP_b,WP_p_asym,WP_p_wcb,W_b,W_p_asym
+W_old,log_Qp,-0.1574,0.0,0.0039,0.1237,0.31
+W_old,hydro_width_hr,0.1379,0.0,0.0254,1.1681,0.026
+W_old,rb_flashiness,-0.0094,0.0047,0.8965,-0.0047,0.952
+W_v2,log_Qp,-0.1551,0.0,0.0293,0.1295,0.001
+W_v2,hydro_width_hr,0.1402,0.0,0.084,0.3313,0.18
+W_v2,rb_flashiness,-0.0085,0.0099,0.791,0.0366,0.242

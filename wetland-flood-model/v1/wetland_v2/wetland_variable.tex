@@ -1,0 +1,257 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage[hidelinks]{hyperref}
+\usepackage{natbib}
+\usepackage{caption}
+\captionsetup{font=small,labelfont=bf}
+\newcommand{\Wj}{W_{j}}
+\newcommand{\Sw}{S_{w,j}}
+\newcommand{\Ti}{T_{ij}}
+
+\title{\textbf{Construction of the Cumulative Wetland Effectiveness Variable $W$}\\[3pt]
+\large Methods and Literature Review --- from mechanism to a computable, calibrated metric}
+\author{MMSD Wetland--Flood Effectiveness Study \quad(\texttt{wetland\_v2})}
+\date{July 2026}
+
+\begin{document}
+\maketitle
+\vspace{-1.1em}
+\begin{abstract}\noindent\small
+This note documents, end to end, how we construct the cumulative ``wetland effectiveness''
+predictor $\Wj$ used in the event--based flood--response models, and---equally---\emph{why} each
+modeling choice is made, with every choice anchored to the hydrologic literature. Starting from
+the physical mechanisms by which wetlands modify floods (storage, attenuation, delay,
+infiltration, connectivity), we adopt the advisor's cumulative form
+$\Wj=\sum_i A_i\,S_i\,K(\Ti)$, drop the separate connectivity term as redundant with the
+travel--time kernel, and build each remaining factor on a published method: a velocity/celerity
+time--of--concentration field for $\Ti$, a Volume--Area storage law and a Cowardin/HGM type
+weight for $S_i$, and an exponential travel--time kernel for $K$. We then calibrate the
+travel--time engine against observed event lags. The resulting variable is physically defensible
+and, reassuringly, reproduces the same peak--shaving signal as the simpler original metric.
+\normalsize\end{abstract}
+
+\section{Motivation: turning many wetlands into one number}
+The scientific question is whether the configuration of wetlands upstream of a gauge is
+associated with the flood response measured at that gauge. This requires collapsing thousands of
+heterogeneous wetland polygons into a single, physically meaningful predictor per gauge $j$. The
+guiding principle \citep{workflow} is to \emph{avoid inventing variables}: every quantity is
+borrowed from an authoritative published method. Following the discussion note, we adopt the
+cumulative ``wetland effectiveness'' form
+\begin{equation}
+\Wj=\sum_{i\in\text{basin}(j)} A_i\,C_i\,S_i\,K(\Ti),
+\label{eq:advisor}
+\end{equation}
+where $A_i$ is the area of wetland $i$, $C_i$ a connectivity/near--stream indicator, $S_i$ a
+storage/soil/type modifier, $\Ti$ the travel time from wetland $i$ to gauge $j$, and $K(\cdot)$ a
+travel--time decay function. Equation~\eqref{eq:advisor} is a weighted sum: each wetland
+contributes its area, up--weighted or down--weighted by how much it can plausibly attenuate the
+flood and by how strongly it is connected to the gauge.
+
+\section{Literature review: mechanisms $\rightarrow$ mathematical representation}
+Wetlands do not affect floods through a single process, and the literature is explicit that the
+\emph{type} and \emph{location} of a wetland govern which process dominates
+\citep{acreman2013,bullock2003}. Table~\ref{tab:mech} maps each mechanism to its hydrologic
+effect and to the mathematical object we use to represent it; the right--hand column is the
+design logic for Eq.~\eqref{eq:advisor}.
+
+\begin{table}[htbp]\centering
+\caption{Wetland flood mechanisms and their representation in $\Wj$.}
+\label{tab:mech}
+\small
+\begin{tabular}{p{2.3cm}p{4.3cm}p{6.2cm}}
+\toprule
+Mechanism & Hydrologic effect & Representation (and literature) \\
+\midrule
+Storage & Lower runoff volume; reduced peak & storage capacity $V_i$ via Volume--Area
+\citep{gleason2007,laneDamico2010,wu2016} \\
+Attenuation & Lower peak, flatter hydrograph & travel--time weighting $K(\Ti)$ \citep{acreman2013} \\
+Delay & Longer time to peak & travel--time weighting / lag \citep{mcmillan2020} \\
+Infiltration & Lower runoff coefficient & soil / wetland--type modifier in $S_i$ \\
+Connectivity & Stronger effect for near/connected wetlands & \emph{is} the travel--time weighting
+\citep{lane2018,ameli2019} \\
+Peak--shaving & Disproportionate reduction in large storms & interaction $W\!\cdot\!P$ (model, not $W$) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Three results from this literature drive our specific choices. First, \citet{acreman2013} review
+shows attenuation and delay dominate the flood signal (wetlands change \emph{timing and shape}
+more than total volume), justifying a travel--time--weighted metric rather than a plain area.
+Second, \citet{ameli2019} demonstrate with a physically based model that wetlands within
+$\sim$100~m of the channel attenuate peaks far more than wetlands $>$4~km away---i.e. the effect
+\emph{decays with hydrologic distance to the network}, which is exactly a travel--time kernel.
+Third, \citet{fossey2016} and \citet{evenson2015} show the location effect interacts with type
+(riparian wetlands matter most on the main stem; isolated wetlands act as headwater
+``gatekeepers'' \citep{golden2016}), motivating a wetland--type modifier $S_i$.
+
+\section{Design decision: dropping the separate connectivity term $C_i$}
+Equation~\eqref{eq:advisor} contains both a connectivity indicator $C_i$ (e.g. a $<$100~m
+near--stream flag) and a travel--time kernel $K(\Ti)$. These encode the \emph{same} mechanism
+twice: a near--stream wetland necessarily has a small $\Ti$ and therefore a large $K(\Ti)$. The
+authoritative connectivity framework itself defines connectivity operationally as travel time to
+the network \citep{lane2018}, and \citet{ameli2019} express the ``$<$100~m matters most'' finding
+as a continuous decay with distance, not a binary. Retaining both double--counts connectivity and
+inflates the weight of near--channel wetlands. We therefore drop $C_i$ and let $K(\Ti)$ carry all
+of the connectivity information:
+\begin{equation}
+\boxed{\;\Wj=\sum_i A_i\,S_i\,K(\Ti)\;}
+\label{eq:W}
+\end{equation}
+This is more parsimonious and removes a redundant, hard--to--calibrate parameter.
+
+\section{Constructing each factor}
+
+\subsection{Wetland area $A_i$}
+Wetland polygons are the USFWS National Wetlands Inventory (NWI), carrying the Cowardin
+classification code. We query them by catchment, deduplicate, and clip; $A_i$ is the clipped
+polygon area in an equal--area projection. As a validation, the NWI wetland area of the main
+Milwaukee basin (324~km$^2$) matches an independent NLCD estimate (325~km$^2$).
+
+\subsection{Travel time $\Ti$: a velocity/celerity time--of--concentration field}
+\paragraph{Why travel time, not distance.} Straight--line distance misranks wetlands because
+runoff follows the channel network; a small wetland on the stream can matter more than a large one
+off to the side. Travel time along the flow path is the physically correct connectivity measure
+\citep{lane2018}. We compute it with the NRCS \emph{velocity method} of time of concentration
+\citep{tr55,mccuen}: route the 10~m DEM by D8 flow directions, assign each cell a flow speed, and
+sum $L/\text{speed}$ along the path from every cell to the gauge (\texttt{pysheds}
+\texttt{distance\_to\_outlet}).
+
+\paragraph{DEM conditioning.} On the low--relief glacial terrain of southeastern Wisconsin, plain
+depression filling fragments the drainage. We use WhiteBox least--cost breaching
+(\texttt{BreachDepressionsLeastCost}) so the contributing area to each gauge matches its mapped
+basin, then \texttt{resolve\_flats} to define D8 directions on flats.
+
+\paragraph{Speed 1 --- celerity, not water velocity.} The original model used the Manning water
+velocity $v=\tfrac{1}{n}R^{2/3}S^{1/2}$. But a flood \emph{peak} propagates at the kinematic wave
+\emph{celerity}, $c=\beta v$, with $\beta=5/3$ for a wide Manning channel
+\citep{lighthill1955,beven2012}. Because we weight wetlands by how their \emph{signal} reaches the
+gauge, celerity is the correct speed; using the water velocity systematically overestimates the
+travel time. Adopting $c=\tfrac{5}{3}v$ in channel cells de--inflates the modeled travel times by
+$\approx$1.5$\times$ (e.g.\ basin--median $479\!\to\!297$~h at the main gauge) while preserving the
+spatial pattern.
+
+\paragraph{Speed 2 --- wetland roughness.} With a uniform Manning $n$, a wetland does not actually
+slow water in the simulation, so the metric would encode only wetland \emph{position}. Yet
+emergent marsh has a much higher roughness ($n\approx0.05$--$0.15$) than upland surfaces
+\citep{kadlec1990,arcement1989}. We therefore assign a land--cover--dependent overland resistance,
+slowing flow through wetland cells. Now the flow--path travel time \emph{integrates the roughness
+of the wetlands the water passes through}: $\Ti$ reflects wetlands actively delaying the flood,
+turning $W$ from a position index into a mechanism.
+
+\subsection{Kernel $K(\Ti)$ and the decay scale $\tau$}
+We use the exponential kernel $K(T)=e^{-T/\tau}$ (with the harmonic $1/(1+T/\tau)$ as a
+robustness variant): it is smooth, bounded, and reduces to the plain wetland fraction when the
+weight is constant \citep{workflow}. The decay scale $\tau$ is the travel--time distance over
+which a wetland's influence persists. Because absolute travel times on this flat terrain are still
+long (hundreds of hours), a fixed $\tau$ (e.g.\ 24~h) would send nearly every weight to zero; we
+set $\tau$ adaptively to each catchment's median travel time, which keeps the weighting
+well--scaled and comparable across basins, and calibrate it against data (\S\ref{sec:calib}).
+
+\subsection{Storage/type modifier $S_i$}
+The advisor's $S_i$ bundles storage, soil, and wetland type. We construct it so that the product
+$A_i S_i$ is mechanistically interpretable:
+\begin{equation}
+S_i = M_{\text{type},i}\times d_i,\qquad A_i S_i = M_{\text{type},i}\,V_i .
+\end{equation}
+\paragraph{Storage depth $d_i$ (Volume--Area).} Rather than hand--pick coefficients, we use the
+published Volume--Area power law $V_i = c\,A_i^{\beta}$
+\citep{gleason2007,laneDamico2010,wu2016}, so the depth is $d_i=V_i/A_i=c A_i^{\beta-1}$. We adopt
+a glaciated--terrain fit ($c\!=\!0.01725,\ \beta\!=\!1.30$, cf.\ prairie--pothole depressions;
+\citealp{wu2016}) appropriate to Wisconsin's glacial landscape, replacing an earlier placeholder.
+Then $A_i S_i = M_{\text{type}}V_i$ and
+\begin{equation}
+\Wj=\sum_i M_{\text{type},i}\,V_i\,e^{-\Ti/\tau},
+\label{eq:Wfinal}
+\end{equation}
+i.e.\ the connectivity--delivered, type--weighted \emph{wetland storage} reaching gauge $j$. This
+unifies the storage capacity into $W$: $\Sw=\sum_i V_i$ is the same quantity without the kernel.
+\paragraph{Type modifier $M_{\text{type}}$.} Following \citet{acreman2013}, floodplain and emergent
+wetlands attenuate peaks more than open--water or lacustrine systems. We map the Cowardin class to
+an attenuation weight (emergent $1.0$; forested/scrub--shrub $0.85$; open water/aquatic bed $0.5$;
+riverine $0.6$; lacustrine $0.3$)---a transparent, tunable table grounded in the type ordering of
+\citet{acreman2013,bullock2003}. Soil (saturated conductivity) is retained as a basin--level
+control rather than a per--wetland factor, because point SSURGO values on small polygons are noisy
+and infiltration acts at the catchment scale.
+
+\section{Calibrating the travel--time engine}\label{sec:calib}
+A model of travel time should be checked against observed response times. From the event pipeline
+we have, per gauge, the observed hydrograph lag (time to peak). The SCS relation gives basin
+lag $\approx0.6\,T_c$ \citep{tr55}. Regressing observed lag on the modeled travel time across the
+nine gauges yields $\text{lag}\approx0.19\,T_c$ ($R^2=0.46$): the model explains about half the
+cross--gauge variance, but the median travel time over--represents slow overland/wetland cells
+relative to the channel--dominated response, and the \emph{flashy urban creeks fit worst}---their
+2--3~h response is driven by imperviousness and storm sewers, not natural travel time. We therefore
+report the calibration as a validation and retain the adaptive $\tau$; a fully calibrated,
+urbanization--corrected celerity is flagged for future work.
+
+\section{Result and robustness}
+The improved variable of Eq.~\eqref{eq:Wfinal}---physical (celerity) travel times, wetland
+roughness, the redundant $C$ removed, and a type--weighted glaciated storage $S_i$---reorders the
+wetland ranking (the most wetland--dense rural basin now scores highest per unit area). Crucially,
+when substituted into the event models it \emph{reproduces the same peak--shaving signal} as the
+original connectivity--weighted fraction: the standardized $W\!\cdot\!P$ coefficient on log peak
+discharge is $-0.155$ (wild--cluster--bootstrap $p=0.029$) versus $-0.157$ ($p=0.004$) for the
+original metric. That the finding is invariant to a substantial, literature--grounded rebuild of
+$W$ is itself evidence that it is not an artifact of one arbitrary construction.
+
+\section{What the literature says we still cannot do}
+Two honest limits remain. (i) \emph{Identification.} $\Wj$ is gauge--constant and, across only
+nine nested catchments, collinear with urbanization; the wetland \emph{level} effect is therefore
+not identifiable regardless of how well $W$ is built---only the event--level interaction
+$W\!\cdot\!P$ is. A causal wetland level effect needs a regional sample of independent catchments
+spanning a wetland gradient decoupled from urbanization. (ii) \emph{Type$\times$location tension.}
+\citet{ameli2019} (near--channel wetlands attenuate peaks most) and \citet{fossey2016} (isolated
+wetlands most effective at headwaters) are not fully reconciled; a single kernel cannot capture
+both, and separating riparian from isolated $W$ components is the natural next refinement.
+
+\begin{thebibliography}{99}\small
+\bibitem[Acreman \& Holden(2013)]{acreman2013} Acreman, M., \& Holden, J. (2013). How wetlands
+affect floods. \emph{Wetlands}, 33, 773--786.
+\bibitem[Ameli \& Creed(2019)]{ameli2019} Ameli, A.~A., \& Creed, I.~F. (2019). Does wetland
+location matter when managing wetlands for watershed--scale flood and drought resilience?
+\emph{JAWRA}, 55(3), 529--542.
+\bibitem[Arcement \& Schneider(1989)]{arcement1989} Arcement, G.~J., \& Schneider, V.~R. (1989).
+Guide for selecting Manning's roughness coefficients for natural channels and flood plains.
+\emph{USGS Water--Supply Paper 2339}.
+\bibitem[Beven(2012)]{beven2012} Beven, K. (2012). \emph{Rainfall--Runoff Modelling: The Primer},
+2nd ed. Wiley.
+\bibitem[Bullock \& Acreman(2003)]{bullock2003} Bullock, A., \& Acreman, M. (2003). The role of
+wetlands in the hydrological cycle. \emph{Hydrology and Earth System Sciences}, 7(3), 358--389.
+\bibitem[Evenson et al.(2015)]{evenson2015} Evenson, G.~R., Golden, H.~E., Lane, C.~R., \&
+D'Amico, E. (2015). Geographically isolated wetlands and watershed hydrology. \emph{Journal of
+Hydrology}, 529, 240--256.
+\bibitem[Fossey \& Rousseau(2016)]{fossey2016} Fossey, M., \& Rousseau, A.~N. (2016). Assessing
+the long--term hydrological services provided by wetlands under changing climate conditions.
+\emph{Journal of Hydrology}, 541, 1287--1302.
+\bibitem[Gleason et al.(2007)]{gleason2007} Gleason, R.~A., et al. (2007). Estimating water storage
+capacity of existing and potentially restorable wetland depressions. \emph{USGS Open--File
+Report 2007--1159}.
+\bibitem[Golden et al.(2016)]{golden2016} Golden, H.~E., et al. (2016). Non--floodplain wetlands
+affect watershed hydrology: ``gatekeepers'' of downstream flows. \emph{Ecohydrology}.
+\bibitem[Kadlec(1990)]{kadlec1990} Kadlec, R.~H. (1990). Overland flow in wetlands: vegetation
+resistance. \emph{Journal of Hydraulic Engineering}, 116(5), 691--706.
+\bibitem[Lane \& D'Amico(2010)]{laneDamico2010} Lane, C.~R., \& D'Amico, E. (2010). Calculating
+the ecosystem service of water storage in isolated wetlands using LiDAR in North Central Florida.
+\emph{Wetlands}, 30, 967--977.
+\bibitem[Lane et al.(2018)]{lane2018} Lane, C.~R., et al. (2018). Hydrological connectivity of
+non--floodplain wetlands to downstream waters: a classification approach. \emph{JAWRA} / US EPA.
+\bibitem[Lighthill \& Whitham(1955)]{lighthill1955} Lighthill, M.~J., \& Whitham, G.~B. (1955).
+On kinematic waves. I. Flood movement in long rivers. \emph{Proc. R. Soc. Lond. A}, 229, 281--316.
+\bibitem[McMillan(2020)]{mcmillan2020} McMillan, H. (2020). Linking hydrologic signatures to
+hydrologic processes: a review. \emph{Hydrological Processes}, 34(6), 1393--1409.
+\bibitem[McCuen(2009)]{mccuen} McCuen, R.~H. (2009). Uncertainty analyses of watershed time
+parameters. \emph{Journal of Hydrologic Engineering}, 14(5), 490--498.
+\bibitem[NRCS(1986)]{tr55} Natural Resources Conservation Service (1986). \emph{Urban Hydrology
+for Small Watersheds}, Technical Release 55 (TR--55). USDA.
+\bibitem[Wu \& Lane(2016)]{wu2016} Wu, Q., \& Lane, C.~R. (2016). Delineation and quantification of
+wetland depressions in the Prairie Pothole Region; Volume--Area--Depth storage relations.
+\emph{Wetlands}, 36, 215--227.
+\bibitem[Discussion note \& workflow(2026)]{workflow} MMSD Wetland--Flood study (2026). Discussion
+note and data/modeling workflow (internal).
+\end{thebibliography}
+\emph{\footnotesize Bibliographic details are representative; verify volume/issue/page before
+formal citation.}
+\end{document}

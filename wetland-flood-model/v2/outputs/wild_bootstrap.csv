@@ -1,0 +1,13 @@
+outcome,model,term,beta,t_cluster,p_wcr,ci95_lo,ci95_hi
+log_Qp,M1_basic,W,-0.4468,-9.49,0.084,-0.5326,-0.3609
+log_Qp,M2_peakshave,WP,-0.2328,-5.06,0.0098,-0.3074,-0.1582
+log_Qp,M3_saturation,S,-0.3366,-3.68,0.002,-0.4733,-0.1998
+log_Qp,M4_nonlinsat,WS,-0.1023,-0.66,0.5859,-0.3931,0.1884
+rb_flashiness,M1_basic,W,0.0016,0.38,0.7598,-0.005,0.0082
+rb_flashiness,M2_peakshave,WP,-0.0041,-3.03,0.0684,-0.0065,-0.0018
+rb_flashiness,M3_saturation,S,0.0056,2.76,0.2637,0.0019,0.0093
+rb_flashiness,M4_nonlinsat,WS,-0.0058,-0.47,0.7598,-0.0287,0.0171
+hydro_width_hr,M1_basic,W,0.5052,2.53,0.7285,0.1738,0.8365
+hydro_width_hr,M2_peakshave,WP,0.0886,2.91,0.082,0.034,0.1433
+hydro_width_hr,M3_saturation,S,0.1157,0.62,0.6797,-0.2199,0.4514
+hydro_width_hr,M4_nonlinsat,WS,1.9424,6.04,0.3848,1.356,2.5287
