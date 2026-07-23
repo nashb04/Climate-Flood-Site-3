@@ -5,16 +5,16 @@ nature-based solutions, affect not only flood risk, but also local property valu
 revenues, and community financial resilience. We combine climate, economic, and public
 finance data to explore how reducing flood risk can reshape local economies.
 
-## Repo layout
+## Table of contents
 
-```
-literature/   Reports and variable-construction write-ups (PDF + LaTeX source)
-code/         Model pipeline scripts
-data/         Committed result outputs the pipelines produced
-archive/      Superseded/unused scripts and data, kept for reference only
-```
+- [`literature/`](#literature) — reports, the presented poster, and the external papers
+  the methodology cites
+- [`code/`](#code) — the three model versions (v1 → v2 → v3; v3 is current)
+- [`data/`](#data) — committed results, mirrored to match `code/`
+- [`archive/`](#archive) — superseded/unused scripts and data, plus a separate blocked
+  research thread
 
-### literature/
+## literature/
 The actual write-ups: `v1_report.pdf` → `v2_report.pdf` → `v3_report.pdf` (full study
 reports, v3 current), `v3_full_regression_tables.pdf`, `v3_poster.pdf`/`.pptx` (the
 presented poster), plus the v1 variable-construction notes (`v1_variables.pdf`,
@@ -23,7 +23,7 @@ alongside each PDF. `references/` holds the external papers the project's method
 built on (Gourevitch/Gold/Garcia and Taylor & Druckenmiller are the core cites) — see
 [literature/references/README.md](literature/references/README.md).
 
-### code/
+## code/
 The wetland–flood effectiveness event model, in three versions — see
 [code/README.md](code/README.md) for what each version does and how they relate:
 
@@ -51,15 +51,29 @@ All three pipelines' own raw inputs/caches (discharge, PRISM, rasters, NWI polyg
 regenerable and gitignored — run the numbered scripts to rebuild them. See
 `code/.gitignore`.
 
-### data/
+**Why v1 and v2 are still here, not archived:** v3 is the current model, but it doesn't
+rebuild its panel from raw data on its own — `build_v3_panel.py` reads v2's already-built
+`events_panel.csv` (committed, in `data/wetland-flood-model-v2/outputs/`) plus v2's cached
+daily-PRISM files and v1's ("Mark's Model") cached 15-minute discharge files (neither
+committed — regenerable caches, currently only in the team's Box folder). v1's and v2's
+*code* is the only record of how those intermediate files were produced in the first place
+(USGS discharge → v1's `build_events_flow.py`; PRISM grid → v2's `s2_build_events_rain.py`;
+wetland `W` → v2's `s3a_build_T_v2.py`/`s3b_build_W_v2.py`). Re-running v3's actual
+regressions (`fit_models_v3.py`, `falsification_v3.py`, `full_regression_tables.py`)
+needs none of this — they only read v3's own committed panel. But a full from-scratch
+rebuild of that panel needs v1 and v2's scripts to know how each upstream step was made,
+so both stay.
+
+## data/
 Committed result outputs (event/panel CSVs, coefficient tables, QA plots) that each
 pipeline version produced, kept separate from the scripts so it's obvious what's a
 script vs. what's a result: `data/wetland-flood-model-v1/`, `-v2/`, `-v3/`.
 
-### archive/
+## archive/
 Two kinds of things, neither wired into the current (v3) model:
 - Early data-pulling scripts for Census demographics/income, NHD watershed mapping,
-  soil, terrain, and precipitation (4km/800m).
+  soil, terrain, and precipitation (4km/800m) — plus the GIS maps/charts/animations they
+  actually produced.
 - `annual-wetland-connectivity-project/` — a **separate, currently-blocked** research
   thread (different unit of analysis: annual gauge-year panel, travel-time-weighted
   wetland connectivity vs. causal flood response). Per its own handoff notes, the wetland
