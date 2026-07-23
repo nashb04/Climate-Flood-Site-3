@@ -10,9 +10,6 @@ __pycache__/
 **/__pycache__/
 *.pyc
 
-# Data and generated outputs
-CensusData/
-NHD/
-NHD_Milwaukee_output/
+# Generated outputs (model-specific ignore rules live in code/.gitignore)
 *.gpkg
 *.zip
