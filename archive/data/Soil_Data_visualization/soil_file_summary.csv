@@ -1,0 +1,16 @@
+metric,value
+soil_gpkg,/Users/jared/Documents/Codex/2026-05-21/milwaukee-river-basin-area-soil-data/ssurgo_package_output/merged/ssurgo_soilmu_a_clipped.gpkg
+muaggatt_csv,/Users/jared/Documents/Codex/2026-05-21/milwaukee-river-basin-area-soil-data/ssurgo_package_output/tabular_csv/muaggatt.csv
+polygon_count,45048
+unique_mukey,605
+total_area_acres,535959.49
+crs,EPSG:3071
+missing_mukey,0
+missing_musym,0
+missing_muname,0
+missing_hydgrpdcd,0
+missing_drclassdcd,0
+missing_flodfreqdcd,0
+missing_aws0150wta,2547
+missing_wtdepannmin,21808
+missing_slopegradwta,1974

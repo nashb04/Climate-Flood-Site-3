@@ -1,0 +1,11 @@
+tier,mechanism,outcome,n,pred_WP,coef,p_asym,p_wcb,ci_lo,ci_hi,match,robust
+canonical,attenuation-peak,log_Qp,5907,-,-0.2021,0.0,0.0176,-0.2741,-0.1301,Y,True
+canonical,attenuation-shape,log_peakedness,5907,-,-0.0879,0.0,0.2207,-0.156,-0.0197,Y,False
+canonical,delay-timing,log1p_ttp,5907,+,0.0199,0.2629,0.4805,-0.018,0.0578,Y,False
+canonical,storage-volume,runoff_coeff_w,5907,-,-0.0212,0.0,0.0273,-0.027,-0.0154,Y,True
+canonical,cumulative-severity,log_quick_depth_mm,5907,-,-0.1142,0.0,0.1504,-0.2252,-0.0032,Y,False
+canonical,extreme-severity,log1p_q99_excess_depth,5907,-,-0.0005,0.0,0.0293,-0.0007,-0.0003,Y,True
+robust,shape,rb_flashiness,5907,-,-0.0045,0.0,0.0449,-0.0066,-0.0023,Y,True
+robust,shape/delay,log_hydro_width,5907,+,0.0925,0.0,0.0625,0.0428,0.1422,Y,False
+robust,rel-peak,log_peak_ratio,5907,-,-0.2762,0.0,0.0312,-0.3488,-0.2036,Y,True
+robust,release,recession_k_per_hr,5906,-,0.0002,0.5103,0.5078,-0.0003,0.0006,N,False

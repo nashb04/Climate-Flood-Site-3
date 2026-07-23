@@ -1,0 +1,6 @@
+name,path,size_mb,width,height,crs,pixel_width,pixel_height,nodata
+elevation_m,clipped/terrain_dem_clipped.tif,45.74,4979,9081,EPSG:3071,10.0,10.0,-999999.0
+slope_degrees,derivatives/terrain_slope_degrees.tif,68.1,4979,9081,EPSG:3071,10.0,10.0,-9999.0
+aspect_degrees,derivatives/terrain_aspect_degrees.tif,66.63,4979,9081,EPSG:3071,10.0,10.0,-9999.0
+hillshade,derivatives/terrain_hillshade.tif,54.81,4979,9081,EPSG:3071,10.0,10.0,-9999.0
+relative_relief_m,derivatives/terrain_relative_relief_m.tif,48.32,4979,9081,EPSG:3071,10.0,10.0,-9999.0

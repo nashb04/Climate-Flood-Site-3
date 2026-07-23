@@ -36,3 +36,11 @@ folder (`Data+ Climate Resilience/Wetland/Wetland/`) — not committed here.
 - `CensusData/` — ACS tract-level income/demographic CSVs produced by the archived
   Census script.
 - `NHD_Milwauke_output/` — watershed map PNG produced by the archived NHD script.
+- `Soil_Data_visualization/` — the actual output of `Soil Data Download & Visualization.py`:
+  5 basin maps (drainage class, hydrologic group, slope gradient, water table depth,
+  available water storage), 5 summary charts, and 3 small CSVs backing them.
+- `Terrain_Data_visualization/` — the actual output of `Terrain Data Download &
+  Visualization.py`: elevation/slope/aspect/hillshade maps, an overview panel, 2 histogram
+  charts, and 2 small CSVs backing them.
+- `Precipitation_visualization/` — animated GIFs (`milwaukee_precip_1981_visualized_4km.gif`,
+  `_800m.gif`) produced by the archived `Precipitation/precipitation_visualizer_*.py` scripts.
