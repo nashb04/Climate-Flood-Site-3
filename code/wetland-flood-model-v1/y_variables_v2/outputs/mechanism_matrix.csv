@@ -1,0 +1,11 @@
+tier,mechanism,y,n,pred,obs_sign,WP_b,p_asym,p_wcb,ci_lo,ci_hi,logo_lo,logo_hi,sign_ok,robust
+canonical,attenuation-peak,log_Qp,5907,-,-,-0.2328,0.0,0.0098,-0.3074,-0.1582,-0.2811,-0.2112,True,True
+canonical,attenuation-shape,log_peakedness,5907,-,-,-0.0945,0.0,0.1836,-0.1623,-0.0267,-0.1147,-0.0411,True,False
+canonical,delay-timing,log1p_ttp,5907,+,+,0.0312,0.028,0.332,-0.0084,0.0708,0.007,0.0536,True,False
+canonical,storage-volume,runoff_coeff_w,5907,-,-,-0.0235,0.0,0.0273,-0.0298,-0.0172,-0.028,-0.0205,True,True
+canonical,cumulative-severity,log_quick_depth_mm,5907,-,-,-0.1383,0.0,0.1543,-0.2701,-0.0065,-0.2037,-0.0965,True,False
+canonical,extreme-severity,log1p_q99_excess_depth,5907,-,-,-0.0006,0.0,0.0293,-0.0008,-0.0004,-0.0007,-0.0004,True,True
+robustness,shape (robust),rb_flashiness,5907,-,-,-0.0041,0.0,0.0684,-0.0065,-0.0018,-0.0049,-0.0022,True,False
+robustness,shape/delay (rob.),log_hydro_width,5907,+,+,0.0886,0.0,0.082,0.034,0.1433,0.0669,0.1074,True,False
+robustness,rel-peak (robust),log_peak_ratio,5907,-,-,-0.2513,0.0,0.0273,-0.3227,-0.1798,-0.2806,-0.2032,True,True
+robustness,release (robust),recession_k_per_hr,5906,-,+,0.0002,0.3572,0.418,-0.0002,0.0006,0.0,0.0004,False,False

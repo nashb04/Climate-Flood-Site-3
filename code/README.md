@@ -5,23 +5,33 @@ response at nine long-record USGS gauges in the Milwaukee/Menomonee (MMSD) water
 Unit of analysis is the **(gauge × storm event)**; every predictor is anchored to a published
 method and public dataset.
 
-Two versions are included:
+Three versions are included:
 
 - **`wetland-flood-model-v1/`** — original pipeline: Eckhardt/peak-prominence event
   detection, IEMRE 12 km Stage IV rainfall, connectivity-weighted wetland fraction `W`.
-- **`wetland-flood-model-v2/`** — **current model.** Upgraded Steps 1–3 (Steps 4–6
-  unchanged): RREDI rolling-median/ratio event detector, **800 m PRISM** rainfall +
-  corrected `P_eff` antecedent index, and a physical wetland effectiveness
-  `W = Σ Aᵢ·Sᵢ·K(Tᵢⱼ)` (kinematic-celerity travel times, wetland roughness, connectivity
-  term dropped, type-weighted glaciated storage).
+- **`wetland-flood-model-v2/`** — upgraded Steps 1–3 (Steps 4–6 unchanged): RREDI
+  rolling-median/ratio event detector, **800 m PRISM** rainfall + corrected `P_eff`
+  antecedent index, and a physical wetland effectiveness `W = Σ Aᵢ·Sᵢ·K(Tᵢⱼ)`
+  (kinematic-celerity travel times, wetland roughness, connectivity term dropped,
+  type-weighted glaciated storage).
+- **`wetland-flood-model-v3/`** — **current model.** Builds directly on v2's panel and:
+  (1) fixes a bug where v2's antecedent-rainfall control (`api_30_mm`) double-counted the
+  event's own rainfall instead of measuring pre-event wetness only; (2) expands from one
+  headline outcome to **10 pre-registered mechanism outcomes** — attenuation (peak,
+  shape), delay/timing, storage/volume, cumulative and extreme severity, flashiness,
+  relative peak, recession — each fit through nested Models 1–4 (basic wetland effect →
+  peak-shaving interaction `W×P` → saturation `S` → nonlinear saturation `W×S`) with
+  wild-cluster-bootstrap inference; (3) adds a falsification suite (VIF, placebo
+  permutation across gauges, leave-one-gauge-out).
 
 The v2 event detector implements Mark's RREDI method. The original standalone script he
 wrote is preserved at
 `wetland-flood-model-v1/step1_new_model_handoff/reference_new_model/mark_model_pipeline.py`,
 along with `step1_new_model_handoff/README.md`, which documents exactly how that method was
-folded into the pipeline that became v2.
+folded into the pipeline that became v2. `wetland-flood-model-v1/y_variables_v2/` holds the
+literature-grounded proposal (`PROPOSAL.md`) that justified the outcome set v3 later adopted.
 
-## Pipeline (both versions)
+## Pipeline
 1. `build_events_flow` (v1) / `s1_build_events_flow` (v2) — 15-min USGS discharge →
    hourly → event table (Y: peak, time-to-peak, hydrograph width, recession,
    R–B flashiness, …).
@@ -33,22 +43,36 @@ folded into the pipeline that became v2.
 5. `build_panel` / `s5_build_panel` — join to one (gauge×event) panel + collinearity
    diagnostic.
 6. `fit_models` / `s6_fit_models` — nested Models 1–4 (mixed effects + gauge-clustered
-   SE; placebo, LOGO).
-7. `wild_bootstrap` / `s6_wild_bootstrap` — exact wild cluster bootstrap (few-cluster
-   inference).
+   SE; placebo, LOGO). `wild_bootstrap` / `s6_wild_bootstrap` — exact wild cluster
+   bootstrap (few-cluster inference).
+7. **v3 only:** `build_v3_panel` — rebuilds `api_30_mm` as a strictly-prior antecedent
+   index and adds the Q99-excess-volume outcome from the 15-min hydrograph.
+   `fit_models_v3` — nested M1–M4 across all 10 outcomes with wild-cluster bootstrap.
+   `falsification_v3` — VIF / placebo / leave-one-gauge-out. `full_regression_tables` —
+   assembles the publication-style tables.
+
+## Precipitation vs. discharge resolution
+**Event rainfall (`P_e`) and antecedent wetness are daily** — PRISM 800 m precipitation
+aggregated to a daily total per catchment per day, summed/decayed over the event window
+and prior days. **Discharge is 15-minute** USGS instantaneous data — used for RREDI event
+detection in all versions, and directly (as a 15-min hydrograph) for v3's Q99-excess
+severity outcome. Nothing in the pipeline uses sub-daily precipitation.
 
 ## Headline result
 Wetlands shave flood **peaks** more strongly in larger storms — the peak-shaving
 interaction `W×P` on log peak discharge survives placebo, leave-one-gauge-out, and wild
-cluster bootstrap: **v1 β = −0.155 (p = 0.029); v2 β = −0.233 (p = 0.010)** — the finding
-is reproduced and strengthened by the upgraded v2 variables. The wetland *level* effect is
-not identifiable across nine urbanization-confounded gauges.
+cluster bootstrap: **v1 β = −0.155 (p = 0.029); v2 β = −0.233 (p = 0.010)**. v3 confirms
+this is not a fluke of one outcome variable: across the 10 pre-registered outcomes, `W×P`
+matches its predicted sign in **9 of 10**, with wild-cluster-bootstrap p < 0.05 on peak
+discharge, runoff coefficient, Q99-excess depth, R–B flashiness, and relative peak. The
+wetland *level* effect alone is still not identifiable across nine urbanization-confounded
+gauges — it's the *interaction with storm size* that's robust.
 
 ## Reports
-See [../literature/](../literature/) for the full write-ups and variable-construction
-notes (`v2_report.pdf` is the current study; `v1_report.pdf`, `v1_variables.pdf`,
-`v1_wetland_variable.pdf`, `v1_rainfall_variable_summary.pdf` cover the original pipeline
-and variable definitions).
+See [../literature/](../literature/) for the full write-ups: `v1_report.pdf` →
+`v2_report.pdf` → `v3_report.pdf` (current), `v3_full_regression_tables.pdf`, and
+`v3_poster.pdf`/`.pptx` (the presented poster). `v1_variables.pdf`, `v1_wetland_variable.pdf`,
+`v1_rainfall_variable_summary.pdf` cover the original pipeline's variable definitions.
 
 ## Result data
 See [../data/](../data/) for the committed CSV/PNG outputs each version produced

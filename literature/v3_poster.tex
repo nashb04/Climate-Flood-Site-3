@@ -1,0 +1,239 @@
+\documentclass[final]{beamer}
+\usepackage[size=custom,width=106.68,height=91.44,scale=1.05]{beamerposter} % 42in x 36in
+\usepackage{amsmath,amssymb,booktabs,graphicx,array,colortbl}
+\usepackage[T1]{fontenc}\usepackage{lmodern}
+\usetheme{default}\usefonttheme{professionalfonts}
+\setbeamertemplate{navigation symbols}{}
+
+\definecolor{dukenavy}{HTML}{012169}
+\definecolor{dukeblue}{HTML}{00539B}
+\definecolor{accent}{HTML}{C1121F}
+\definecolor{lightgray}{HTML}{EEF1F5}
+\definecolor{robustbg}{HTML}{FBE9E9}
+\definecolor{bandbg}{HTML}{E8EEF6}
+
+\setbeamercolor{block title}{fg=white,bg=dukeblue}
+\setbeamercolor{block body}{fg=black,bg=lightgray}
+\setbeamertemplate{block begin}{
+  \vskip4pt\begin{beamercolorbox}[leftskip=.6cm,colsep*=.4ex,rounded=false]{block title}
+  \raggedright\usebeamerfont{block title}\textbf{\insertblocktitle}\end{beamercolorbox}
+  \begin{beamercolorbox}[leftskip=.5cm,rightskip=.5cm,vmode]{block body}\vskip5pt\justifying}
+\setbeamertemplate{block end}{\vskip5pt\end{beamercolorbox}\vskip3pt}
+% uniform body font everywhere
+\setbeamerfont{block title}{size=\large}
+\setbeamerfont{block body}{size=\normalsize}
+\newcommand{\hl}[1]{\colorbox{robustbg}{\parbox{0.95\linewidth}{\color{dukenavy}#1}}}
+\newcommand{\cpt}[1]{\vskip2pt{\color{dukenavy}\textit{#1}}\vskip2pt}
+\usepackage{ragged2e}
+
+\begin{document}
+\begin{frame}[t]
+
+% ===================== HEADER =====================
+\begin{columns}
+\begin{column}{0.15\paperwidth}\centering
+  {\color{dukenavy}\bfseries\fontsize{46}{52}\selectfont Duke}\\[2pt]
+  {\color{accent}\bfseries\fontsize{46}{52}\selectfont Data+}\end{column}
+\begin{column}{0.68\paperwidth}\centering
+  {\color{dukenavy}\bfseries\fontsize{60}{66}\selectfont Wetland Configuration \&\ Event-Scale Flood Response}\\[6pt]
+  {\color{dukeblue}\fontsize{38}{44}\selectfont in the Milwaukee (MMSD) Watersheds}\\[10pt]
+  {\fontsize{28}{34}\selectfont Nash Boykin \ \textbullet\ \ Jared Zheng \ \textbullet\ \ Jiaxuan Zhang \ \textbullet\ \ Ben Wu \quad\textbar\quad Duke Data+}\end{column}
+\begin{column}{0.15\paperwidth}\centering
+  {\color{dukenavy}\bfseries\fontsize{46}{52}\selectfont Duke}\\[2pt]
+  {\color{accent}\bfseries\fontsize{46}{52}\selectfont Data+}\end{column}
+\end{columns}
+\vskip6pt
+% ---- selling-points banner ----
+\begin{beamercolorbox}[wd=\paperwidth,sep=10pt]{}\colorbox{dukenavy}{\parbox{0.985\paperwidth}{\centering\color{white}\large
+\textbf{(1) Event-level} (gauge $\times$ storm), not annual --- capturing the timing/shape mechanisms wetlands actually act on. \quad\textbullet\quad
+\textbf{(2) Honest identification:} the wetland \emph{level} effect is confounded (wetland$\leftrightarrow$urban $r=-0.87$), but the event-varying \textbf{$W\!\cdot\!P$ interaction is identified} and survives falsification.}}\end{beamercolorbox}
+\vskip8pt
+
+% ===================== COLUMNS =====================
+\begin{columns}[t]
+
+% ================= COLUMN 1 =================
+\begin{column}{0.235\paperwidth}
+\begin{block}{1. Background \& Baseline}
+Flooding is the \textbf{costliest U.S.\ natural disaster} ($\sim\!\$20$B/yr); storms are intensifying,
+more people live in floodplains, and only $\sim\!30\%$ of losses are insured. Wetlands act as
+\textbf{natural sponges}, absorbing floodwater before it reaches homes --- yet the U.S.\ has lost
+$\sim\!40\%$ of its wetlands since 1700. MMSD is restoring wetlands basin-wide on this premise.
+\smallskip\\
+Our \textbf{anchor paper}, Taylor \& Druckenmiller (\emph{AER} 2022), links wetland loss to flood
+damage through NFIP claims. A direct replication for the Milwaukee basin \textbf{failed to identify}
+a causal effect:
+\vskip4pt
+{\centering
+\begin{tabular}{@{}>{\raggedright}p{0.30\linewidth} p{0.62\linewidth}@{}}
+\toprule
+\textbf{Problem} & \textbf{Detail}\\ \midrule
+No variation & basin wetland area barely changes year to year\\
+Collinearity & wetland loss overlaps urbanization in time/place\\
+ID strategy & gaps in the original identification design\\
+\bottomrule
+\end{tabular}\par}
+\vskip5pt
+\textbf{Scope.} The full chain is \emph{wetland $\to$ flood depth $\to$ NFIP damage}; this study does
+the \textbf{hydrologic half} (wetland $\to$ event-scale flood response). Depth$\to$damage is future
+work (\S7).
+\end{block}
+
+\begin{block}{Study area \& data}
+Nine long-record USGS gauges on the Milwaukee \& Menomonee rivers, \textbf{2001--2023}; \textbf{5{,}907}
+storm events extracted from 15-minute discharge. The basin grades from a wetland-rich rural north to
+wetland-poor urban creeks --- the gradient that both \emph{powers} and \emph{confounds} the analysis.
+\vskip3pt
+\centering\includegraphics[width=\linewidth]{figs/study_area.png}
+\end{block}
+
+\begin{block}{At a glance}
+\centering
+\textbf{9} USGS gauges \ \textbullet\ \ \textbf{5{,}907} storm events \ \textbullet\ \ \textbf{2001--2023}\\[3pt]
+\raggedright Primary result: the wetland$\times$rainfall interaction on log peak discharge is
+$\mathbf{-0.20}$ (wild-bootstrap $p=0.016$) --- robust across \textbf{four} independent outcomes and
+all \textbf{three} falsification tests, and unchanged under a full rebuild of $W$.
+\end{block}
+\end{column}
+
+% ================= COLUMN 2 =================
+\begin{column}{0.235\paperwidth}
+\begin{block}{3. Methodology: a mechanism-based, event-scale model}
+Hydrology offers two routes: physically-based models (SWAT, HEC-HMS) are explicit but need many
+non-authoritative, unidentifiable parameters; a purely statistical model is parsimonious but
+mechanism-blind. We take a \textbf{middle path} --- regressing observed streamflow responses on
+rainfall and a compact set of wetland-configuration predictors whose \emph{definitions} are borrowed
+from the process literature (travel-time connectivity, Volume--Area storage, hydrologic signatures).
+The model is \emph{phenomenological in estimation, mechanistic in construction}: no invented parameters.
+\smallskip\\
+Its defining feature is the \textbf{unit of analysis --- one gauge $\times$ one storm}, not the annual
+aggregate: wetlands act on the peak, shape, and timing of the hydrograph, which annual means wash out.
+For event $e$ at gauge $j$,
+\begin{center}\resizebox{0.99\linewidth}{!}{$\displaystyle
+ Y_{j,e}=\beta_0+\beta_1 P_e+\beta_2 W_j+\beta_3 (W_j\!\cdot\!P_e)+\beta_4\,(V_e/S_{w,j})+X_{j,e}\gamma+u_j+\varepsilon_{j,e}$}\end{center}
+Each term is a mechanism: $\beta_1$ rainfall forcing; $\beta_2$ wetland attenuation; \textbf{$\beta_3$
+peak-shaving} (do wetlands matter more in larger storms?); $\beta_4$ saturation (does effectiveness
+fade once storm volume exceeds capacity?). Correlated predictors are added in a \textbf{nested sequence
+(Models 1--4)}, each mechanism tested against a transparent benchmark.
+\vskip4pt
+\hl{\textbf{Identification.} The wetland \emph{level} effect $\beta_2$ is only cross-sectional and
+confounded; the interaction $\beta_3$ is identified \emph{within basins}, across storms of differing
+size --- our inference rests on it.}
+\end{block}
+
+\begin{block}{4-III. Weighted wetland effectiveness $W$}
+Not raw area: each wetland contributes \textbf{type-weighted storage, discounted by hydrologic travel
+time} to the gauge, from the advisor form $W_j=\sum_i A_iS_iK(T_{ij})$:
+\begin{center}\large$\displaystyle
+ W_j=\sum_i M_{\text{type},i}\,V_i\,e^{-T_{ij}/\tau},\qquad S_{w,j}=\sum_i V_i.$\end{center}
+$V_i$ = storage (NWI area $\times$ glaciated Volume--Area law); $M_{\text{type},i}$ = Cowardin-type
+attenuation weight; $T_{ij}$ = DEM/D8 travel time (kinematic celerity + wetland roughness). The binary
+connectivity term is \textbf{dropped} --- near-stream connectivity is already encoded by
+$e^{-T_{ij}/\tau}$. Thus $W$ is \emph{connectivity-delivered, type-weighted wetland storage}, while
+$S_w$ is total upstream storage.
+\vskip3pt
+\centering\includegraphics[width=\linewidth]{figs/connectivity.png}
+\cpt{Wetlands (green) $\to$ D8 flow field $\to$ travel-time-weighted connectivity to the gauge.}
+\end{block}
+\end{column}
+
+% ================= COLUMN 3 =================
+\begin{column}{0.235\paperwidth}
+\begin{block}{4-I. Discharge response outcomes $Y$}
+From each event hydrograph we build outcomes spanning every mechanism; we model \emph{one at a time}.
+\vskip3pt
+\textbf{Peak (primary):} $\log Q_p$ --- log of maximum event discharge (tests attenuation).\\
+\textbf{Relative peak / concentration:} \emph{log peak-ratio} (peak vs.\ local baseline);
+\emph{log peakedness} (peak excess vs.\ cumulative quickflow).\\
+\textbf{Timing / shape:} \emph{time-to-peak}; \emph{R--B flashiness}; \emph{hydrograph width};
+\emph{recession rate}.\\
+\textbf{Storage / volume:} \emph{runoff coefficient} (quickflow/rainfall); \emph{quickflow depth}
+(Riemann-sum volume $\div$ area).\\
+\textbf{Extreme severity:} \emph{$Q_{99}$-excess depth} --- Riemann-sum volume above the gauge's
+99th-percentile flow, area-normalized.
+\end{block}
+
+\begin{block}{4-II. Rainfall \& control variables}
+\textbf{$P_e$} = cumulative basin-mean rainfall over the event window (Stage IV / 800\,m PRISM radar QPE).
+\textbf{api\_30} = 30-day antecedent index, exponentially decayed ($k=0.9$), summed \emph{strictly before}
+event start.
+\vskip3pt
+\hl{$P_e$ and api\_30 are built \emph{non-overlapping}: "how big was this storm" vs.\ "how wet was the
+basin already."}
+\vskip4pt
+\textbf{Static controls:} log drainage area (size); impervious \% (NLCD, urbanization);
+soil $K_{\text{sat}}$ (POLARIS, infiltration); channel slope (3DEP, wave timing); winter flag
+(snowmelt / cold-season season).
+\end{block}
+
+\begin{block}{5. Estimation \& falsification}
+OLS with \textbf{gauge-clustered SE} (random-effects cross-check), standardized predictors, nested
+M1--M4. Across nine gauges wetland cover is collinear with urbanization ($r=-0.87$; high VIF for
+between-gauge terms, but $W\!\cdot\!P$ VIF $=1.1$). Because nine clusters break asymptotics, every claim
+is falsified three ways (primary $\log Q_p$):
+\vskip3pt
+{\centering
+\begin{tabular}{@{}l c c c@{}}
+\toprule
+ & Placebo $p$ & Leave-1-out & Wild-boot.\ $p$\\ \midrule
+$W$ (level) & $0.09$ & $[-0.40,-0.04]$ & $0.16$\\
+\rowcolor{robustbg}\textbf{$W\!\cdot\!P$} & \textbf{0.002} & $\mathbf{[-0.24,-0.18]}$ & \textbf{0.016}\\
+\bottomrule
+\end{tabular}\par}
+\vskip3pt
+All three agree: the level effect is \emph{not} identified; the peak-shaving interaction \emph{survives}.
+\vskip3pt
+\centering\includegraphics[width=0.80\linewidth]{figs/collinearity.png}
+\cpt{Gauge-level collinearity ($n=9$): wetland vs.\ urbanization/soils/terrain.}
+\end{block}
+\end{column}
+
+% ================= COLUMN 4 =================
+\begin{column}{0.235\paperwidth}
+\begin{block}{6. Result: wetlands shave flood peaks}
+More effective upstream wetland storage $\Rightarrow$ a weaker rainfall-to-peak translation,
+\textbf{disproportionately in larger storms}. On log peak discharge $W\!\cdot\!P=\mathbf{-0.20}$
+(wild-bootstrap $p=0.016$), \textbf{corroborated} by an independent relative-peak metric and a storage
+signature.
+\vskip3pt
+\centering\includegraphics[width=\linewidth]{figs/forest.png}
+\vskip3pt
+{\raggedright
+\begin{tabular}{@{}l l c@{}}
+\toprule
+Outcome & Mechanism & $W\!\cdot\!P$ (WCB $p$)\\ \midrule
+\rowcolor{robustbg}$\log Q_p$ & peak & $\mathbf{-0.20}$ (.016)\\
+\rowcolor{robustbg}log peak-ratio & rel.\ peak & $\mathbf{-0.28}$ (.027)\\
+\rowcolor{robustbg}runoff coef. & storage & $\mathbf{-0.02}$ (.029)\\
+\rowcolor{robustbg}flashiness & shape & $\mathbf{-0.004}$ (.043)\\
+peakedness / width & shape/time & pred.\ sign, n.s.\\
+\bottomrule
+\end{tabular}\par}
+\vskip3pt
+\textbf{9 of 10} outcomes carry the predicted sign; peak-shaving is corroborated by a second peak
+metric and a storage signature, and is \textbf{invariant} to a full, literature-grounded rebuild of
+$W$ (v1$\to$v3) and to correcting the antecedent control.
+\end{block}
+
+\begin{block}{7. Conclusion, limitations \& future work}
+Wetlands \textbf{reshape the storm hydrograph's peak}, more so in larger storms --- a mechanistically
+grounded, falsification-surviving \emph{association}. The wetland level effect is \textbf{not causally
+identified}: nine nested, urbanization-confounded gauges limit us to within-basin variation; absolute
+travel times are uncalibrated (so $W$ is a relative index) and $S_w$ is order-of-magnitude.
+\smallskip\\
+\textbf{Future work.} (i) a regional sample of \emph{independent} catchments spanning a wetland gradient
+decoupled from urbanization, to identify the level effect; (ii) native 4\,km/1\,km radar over the
+smallest basins; (iii) close the chain by linking event flood response to \textbf{flood depth and NFIP
+damages} (the economic half, mirroring \S1).
+\vskip5pt
+{\textbf{References.} Acreman \& Holden (2013); Ameli \& Creed (2019); Lane et al.\ (2018);
+Wu \& Lane (2016); Kadlec (1990); Taylor \& Druckenmiller (2022).}
+\vskip6pt
+\hl{\centering\textbf{Bottom line:} wetlands don't stop the water --- they \textbf{slow and reshape}
+it, shaving the flood peak most when storms are largest.}
+\end{block}
+\end{column}
+
+\end{columns}
+\end{frame}
+\end{document}

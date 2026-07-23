@@ -1,7 +1,27 @@
 # Archive
 
 Scripts and data that predate, or were never wired into, the current
-`code/wetland-flood-model-v2/` pipeline. Kept for reference in case any of it gets reused.
+`code/wetland-flood-model-v3/` pipeline. Kept for reference in case any of it gets reused.
+
+## ⭐ annual-wetland-connectivity-project/
+A **separate research thread**, run independently by a collaborator, with a different unit
+of analysis than the main model: instead of (gauge × storm-event), it's an **annual
+gauge-year panel** across 26+ SE Wisconsin gauges, testing whether a travel-time-weighted
+wetland connectivity metric (`W`) reduces annual flood-peak runoff depth, causally.
+
+**Status per its own handoff notes: not yet causally identified, and currently blocked.**
+The annual wetland series (LCMAP) barely changes year-to-year within a gauge, so two-way
+fixed-effects can't isolate `W`'s effect from cross-sectional confounding with urbanization
+(corr(W, urban) = −0.96). Cross-sectional OLS finds W = −7.89 (p<0.01, wetlands lower flood
+peaks) but that's not a causal estimate. The blocker: getting Annual NLCD (1985–2023)
+wetland fraction per catchment to get real within-gauge variation — see `HANDOFF.md` §3 for
+the attempted (and failed) data-access routes, and §9 for next steps if anyone picks it
+back up.
+
+Contents here are the pipeline scripts and status docs only (`README.md`, `HANDOFF.md`,
+`code/`). The full data/outputs (~900 MB: DEM/NLCD/LCMAP rasters, catchment geometries,
+cached API pulls, regression outputs) are regenerable and live only in the team's Box
+folder (`Data+ Climate Resilience/Wetland/Wetland/`) — not committed here.
 
 ## code/
 - `American_Community_Survey_income_demographic.py` — pulls ACS income/demographic data.
@@ -9,7 +29,7 @@ Scripts and data that predate, or were never wired into, the current
 - `Soil Data Download & Visualization.py`
 - `Terrain Data Download & Visualization.py`
 - `Precipitation/` — 4km and 800m precipitation downloader/visualizer scripts. (The
-  current model, v2, fetches its own 800m PRISM data directly — see
+  current model fetches its own 800m PRISM data directly — see
   `code/wetland-flood-model-v2/s2_build_events_rain.py`.)
 
 ## data/

@@ -1,0 +1,172 @@
+\documentclass[11pt]{article}
+\usepackage[margin=0.95in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage[hidelinks]{hyperref}
+\usepackage{caption}
+\captionsetup{font=small,labelfont=bf}
+\graphicspath{{outputs/}}
+
+\title{\textbf{Mark Model v3 --- Corrected Antecedent Control, Expanded Outcomes,
+and the Full Nested Models 1--4}\\[3pt]
+\large Event-scale wetland flood-response analysis, MMSD (Milwaukee) gauges}
+\author{Wetland--Flood Effectiveness Study}
+\date{July 2026}
+
+\begin{document}
+\maketitle
+\vspace{-1em}
+\begin{abstract}\noindent\small
+v3 builds directly on v2 (RREDI events, 800\,m PRISM rainfall, celerity/roughness/type-weighted
+wetland effectiveness $W$) and changes two things. First, it \textbf{corrects the antecedent
+precipitation control}: v2's \texttt{api\_30} was evaluated at the event-start day with day~0
+included, so the ``antecedent wetness'' control shared the event-day rainfall with the forcing
+$P_e$ (their correlation was 0.35); v3 uses a strictly-prior antecedent index, dropping that
+correlation to 0.14 and removing the double-counting. Second, it \textbf{expands the outcome set}
+to a mechanism-complete panel of ten signatures and fits the full nested Models~1--4 for every one,
+with wild-cluster-bootstrap inference on each model's key term. The headline peak-shaving result
+survives the correction ($W\!\cdot\!P$ on log peak $=-0.20$, WCB $p=0.016$) and is corroborated by
+a second peak metric and a storage signature; the wetland \emph{level} effect remains unidentified.
+\normalsize\end{abstract}
+
+\section{What changed from v2 to v3}
+The event detector (RREDI 7-day rolling-median), the 800\,m PRISM rainfall source, the improved
+wetland effectiveness $W=\sum_i A_iS_iK(T_{ij})$ (kinematic-celerity travel times, wetland
+roughness, connectivity term dropped, type-weighted glaciated storage), and all controls are
+\emph{inherited unchanged}. v3 changes only:
+\begin{enumerate}\itemsep2pt
+\item \textbf{Antecedent control correction} (\S\ref{sec:api}) --- the one logic fix.
+\item \textbf{Outcome expansion} (\S\ref{sec:models}) --- ten mechanism-mapped signatures, each
+run through Models~1--4.
+\end{enumerate}
+The usable sample is unchanged: \textbf{5{,}907 gauge-events} across nine gauges, 2001--2023.
+
+\section{Correcting the antecedent precipitation control}\label{sec:api}
+The design intends two distinct rainfall quantities: a \emph{forcing} $P_e$ = cumulative rainfall
+over the event window, and a \emph{control} = antecedent (pre-event) wetness. In v2 the antecedent
+index was
+$\;P_{\text{eff}}(t)=\sum_{n=0}^{30}k^{n}P(t-n)\;$ (with day~0, $k=0.9$) evaluated \emph{at} the
+event-start day $d_0$. Because $P_e$ also includes the day-$d_0$ rain, the control and the forcing
+overlapped on the event-day rainfall --- the code comment said ``antecedent'' but the logic was not
+strictly prior. v3 defines
+\begin{equation}
+\texttt{api\_30}_{j,e}=\sum_{n=1}^{30}k^{n}\,P(d_0-n),\qquad k=0.9,
+\end{equation}
+i.e.\ strictly-prior wetness with the event day excluded. Evidence the fix does what it should:
+
+\begin{table}[htbp]\centering
+\caption{Antecedent control before/after the correction (usable events).}
+\small
+\begin{tabular}{lcc}
+\toprule
+ & v2 (day-0 included, at $d_0$) & v3 (strictly prior) \\
+\midrule
+$\mathrm{corr}(\texttt{api\_30},\,P_e)$ & 0.35 & \textbf{0.14} \\
+median \texttt{api\_30} (mm) & 23.2 & 18.0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The residual 0.14 correlation is genuine (wet antecedent conditions co-occur mildly with storms),
+not the mechanical overlap that inflated it to 0.35.
+
+\section{Models 1--4 for every outcome}\label{sec:models}
+For each outcome we fit the nested progression, gauge random-intercept, standardized predictors:
+\[
+\text{M1: }Y\sim P+W+X;\quad \text{M2: }+W\!\cdot\!P;\quad
+\text{M3: }+S;\quad \text{M4: }+W\!\cdot\!S,\qquad S=\log(V_e/S_w).
+\]
+$X$ = drainage area, impervious, $K_{\text{sat}}$, channel slope, the corrected antecedent, and a
+winter flag. Table~\ref{tab:m14} reports each model's \emph{newly added} key term with its
+wild-cluster-bootstrap $p$ (512 exact Rademacher sign vectors; the honest inference for 9 clusters).
+Predicted $W\!\cdot\!P$ signs are pre-registered.
+
+\begin{table}[htbp]\centering
+\caption{Nested Models 1--4: key added-term coefficient (WCB $p$) per outcome. Bold = WCB $p<0.05$.
+$W$ = wetland level (M1); $W\!\cdot\!P$ = peak-shaving (M2); $S=\log(V_e/S_w)$ saturation (M3);
+$W\!\cdot\!S$ nonlinear saturation (M4).}
+\label{tab:m14}
+\scriptsize
+\begin{tabular}{llrrrr}
+\toprule
+Mechanism & Outcome & M1: $W$ & M2: $W\!\cdot\!P$ & M3: $S$ & M4: $W\!\cdot\!S$ \\
+\midrule
+attenuation--peak    & \texttt{log\_Qp}                 & $-0.380$\,(.156) & $\mathbf{-0.202}$\,(.016) & $\mathbf{-0.329}$\,(.002) & $-0.049$\,(.766) \\
+attenuation--shape   & \texttt{log\_peakedness}         & $-0.131$\,(.900) & $-0.088$\,(.223) & $+0.286$\,(.365) & $-1.544$\,(.455) \\
+delay--timing        & \texttt{log1p\_ttp}              & $+0.440$\,(.641) & $+0.020$\,(.480) & $+0.133$\,(.580) & $+1.944$\,(.310) \\
+storage--volume      & \texttt{runoff\_coeff}           & $+0.004$\,(.568) & $\mathbf{-0.021}$\,(.029) & $+0.015$\,(.219) & $\mathbf{+0.095}$\,(.006) \\
+cumulative severity  & \texttt{log\_quick\_depth\_mm}   & $-0.249$\,(.440) & $-0.114$\,(.152) & $-0.615$\,(.217) & $+1.496$\,(.375) \\
+extreme severity     & \texttt{log1p\_q99\_excess}      & $\sim0$\,(.598)  & $\mathbf{-0.001}$\,(.027) & $\sim0$\,(.143) & $+0.001$\,(.162) \\
+\midrule
+shape (rob.)         & \texttt{rb\_flashiness}          & $\sim0$\,(.932)  & $\mathbf{-0.004}$\,(.043) & $+0.005$\,(.254) & $-0.006$\,(.744) \\
+shape/delay (rob.)   & \texttt{log\_hydro\_width}       & $+0.520$\,(.725) & $+0.092$\,(.060) & $+0.118$\,(.664) & $+1.947$\,(.377) \\
+rel-peak (rob.)      & \texttt{log\_peak\_ratio}        & $-0.232$\,(.408) & $\mathbf{-0.276}$\,(.027) & $+0.142$\,(.205) & $\mathbf{+0.749}$\,(.041) \\
+release (rob.)       & \texttt{recession\_k}            & $-0.002$\,(.562) & $+0.000$\,(.512) & $+0.005$\,(.201) & $\mathbf{+0.021}$\,(.021) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{The peak-shaving mechanism matrix}
+Table~\ref{tab:wp} and Fig.~\ref{fig:forest} isolate the $W\!\cdot\!P$ interaction (M2) --- the
+event-identified estimand. Nine of ten outcomes carry the pre-registered sign; five survive the
+wild cluster bootstrap.
+
+\begin{table}[htbp]\centering
+\caption{$W\!\cdot\!P$ (peak-shaving, M2) by outcome: predicted vs.\ estimated sign, WCB $p$,
+95\% wild-bootstrap CI.}
+\label{tab:wp}
+\small
+\begin{tabular}{llrrrl}
+\toprule
+Outcome & pred & $\hat\beta$ & WCB $p$ & 95\% CI & verdict \\
+\midrule
+\texttt{log\_Qp}            & $-$ & $-0.202$ & 0.016 & $[-0.274,-0.130]$ & \textbf{robust} \\
+\texttt{log\_peak\_ratio}   & $-$ & $-0.276$ & 0.027 & $[-0.349,-0.204]$ & \textbf{robust} \\
+\texttt{runoff\_coeff}      & $-$ & $-0.021$ & 0.029 & $[-0.027,-0.015]$ & \textbf{robust (small)} \\
+\texttt{rb\_flashiness}     & $-$ & $-0.004$ & 0.043 & $[-0.007,-0.002]$ & \textbf{robust} \\
+\texttt{log1p\_q99\_excess} & $-$ & $-0.001$ & 0.027 & $[-0.001,-0.000]$ & flagged, $\approx$0 \\
+\texttt{log\_peakedness}    & $-$ & $-0.088$ & 0.223 & $[-0.156,-0.020]$ & sign ok \\
+\texttt{log\_quick\_depth}  & $-$ & $-0.114$ & 0.152 & $[-0.225,-0.003]$ & sign ok \\
+\texttt{log\_hydro\_width}  & $+$ & $+0.092$ & 0.060 & $[+0.043,+0.142]$ & sign ok (marginal) \\
+\texttt{log1p\_ttp}         & $+$ & $+0.020$ & 0.480 & $[-0.018,+0.058]$ & sign ok \\
+\texttt{recession\_k}       & $-$ & $+0.000$ & 0.512 & $[-0.000,+0.001]$ & null \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[htbp]\centering
+\includegraphics[width=0.82\textwidth]{models_v3_forest.png}
+\caption{v3 $W\!\cdot\!P$ interaction by outcome (M2, 95\% wild-bootstrap CI). Red = robust
+(WCB $p<.05$ and predicted sign); blue = predicted sign but not robust; gray = off.}
+\label{fig:forest}
+\end{figure}
+
+\section{Interpretation}
+\textbf{The headline survives the correction.} Peak-shaving on log peak discharge is
+$-0.20$ (WCB $p=0.016$), modestly attenuated from v2's $-0.23$ once the antecedent control no
+longer double-counts the event-day rain, and it is \emph{corroborated} by an independent peak
+metric (\texttt{log\_peak\_ratio}, $-0.28$, $p=0.027$). \textbf{Directional coherence is strong}:
+nine of ten mechanisms point the predicted way. \textbf{A storage signature is now robust}:
+wetlands lower the event runoff coefficient more in larger storms ($-0.021$, $p=0.029$) --- small,
+exactly as the ``weak volume effect'' hypothesis predicts. \textbf{Flashiness sharpened}: with the
+cleaner antecedent control it crosses into robust ($-0.004$, $p=0.043$), where it was marginal
+before. Shape/timing signatures (peakedness, width, time-to-peak) carry the right sign but are
+individually underpowered, and \texttt{q99\_excess}, though flagged, is $\approx0$ and dominated by
+its 85\% zeros. The saturation ($S$) and $W\!\cdot\!S$ terms in M3--M4 are collinearity-laden
+(gauge-level storage enters through both $W$ and $S_w$) and are not cleanly interpretable; the
+event-identified $W\!\cdot\!P$ remains the estimand we lean on.
+
+\section{Limitations}
+The wetland \emph{level} effect ($W$, M1) is not robust for any outcome --- across nine
+urbanization-confounded gauges it is only cross-sectionally identified. Absolute travel times are
+uncalibrated and $S_w$ is order-of-magnitude, so $W$ is a relative index; M3--M4 storage terms are
+collinear; \texttt{q99\_excess} is zero-inflated. The analysis is associational and disciplined by
+placebo/leave-one-gauge-out/bootstrap, not causal. A cleanly identified level effect still requires
+a regional sample of independent catchments decoupled from urbanization.
+
+\paragraph{Files.} \texttt{Mark\_model\_v3/}: \texttt{build\_v3\_panel.py} (antecedent fix +
+outcome expansion), \texttt{fit\_models\_v3.py} (Models 1--4 + WCB), \texttt{events\_panel\_v3.csv},
+\texttt{models\_v3\_all.csv}, \texttt{models\_v3\_WxP.csv}, \texttt{models\_v3\_forest.png}. v2 is
+untouched.
+\end{document}
