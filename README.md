@@ -67,7 +67,10 @@ so both stay.
 ## data/
 Committed result outputs (event/panel CSVs, coefficient tables, QA plots) that each
 pipeline version produced, kept separate from the scripts so it's obvious what's a
-script vs. what's a result: `data/wetland-flood-model-v1/`, `-v2/`, `-v3/`.
+script vs. what's a result: `data/wetland-flood-model-v1/`, `-v2/`, `-v3/`. The one
+exception: `wetland-flood-model-v1/v2_prototype/outputs/` sits under v1 on purpose — it's
+the old-vs-new wetland-formula comparison from *while v2 was being prototyped inside v1*,
+not v2's own results (see `code/README.md` for why).
 
 ## archive/
 Two kinds of things, neither wired into the current (v3) model:
@@ -78,7 +81,7 @@ Two kinds of things, neither wired into the current (v3) model:
   thread (different unit of analysis: annual gauge-year panel, travel-time-weighted
   wetland connectivity vs. causal flood response). Per its own handoff notes, the wetland
   effect isn't causally identified yet (blocked on getting annual land-cover data). Code +
-  status docs only — the full data/outputs (~900 MB, regenerable) live in the team's Box
+  status docs only — the full data/outputs (~8.4 GB, regenerable) live in the team's Box
   folder, not in git.
 
 See [archive/README.md](archive/README.md) for details.

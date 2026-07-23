@@ -19,18 +19,19 @@ the attempted (and failed) data-access routes, and §9 for next steps if anyone 
 back up.
 
 Contents here are the pipeline scripts and status docs only (`README.md`, `HANDOFF.md`,
-`code/`). The full data/outputs (~900 MB: DEM/NLCD/LCMAP rasters, catchment geometries,
-cached API pulls, regression outputs) are regenerable and live only in the team's Box
-folder (`Data+ Climate Resilience/Wetland/Wetland/`) — not committed here.
+`code/`). The full data/outputs (~8.4 GB: DEM/NLCD/LCMAP rasters, catchment geometries,
+cached API pulls, regression outputs, plus a slide-deck build folder) are regenerable and
+live only in the team's Box folder (`Data+ Climate Resilience/Wetland/Wetland/`) — not
+committed here.
 
 ## code/
 - `American_Community_Survey_income_demographic.py` — pulls ACS income/demographic data.
 - `NHD_Milwauke.py` — NHD watershed/river mapping.
 - `Soil Data Download & Visualization.py`
 - `Terrain Data Download & Visualization.py`
-- `Precipitation/` — 4km and 800m precipitation downloader/visualizer scripts. (The
-  current model fetches its own 800m PRISM data directly — see
-  `code/wetland-flood-model-v2/s2_build_events_rain.py`.)
+- `Precipitation/` — 4km and 800m precipitation downloader/visualizer scripts. (These
+  aren't what feeds the current model — v2's own `s2_build_events_rain.py` reads 800m
+  PRISM from a separate pre-downloaded cache, not a live fetch.)
 
 ## data/
 - `CensusData/` — ACS tract-level income/demographic CSVs produced by the archived

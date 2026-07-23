@@ -30,6 +30,12 @@ wrote is preserved at
 along with `step1_new_model_handoff/README.md`, which documents exactly how that method was
 folded into the pipeline that became v2. `wetland-flood-model-v1/y_variables_v2/` holds the
 literature-grounded proposal (`PROPOSAL.md`) that justified the outcome set v3 later adopted.
+`wetland-flood-model-v1/v2_prototype/` is where v2's wetland-effectiveness formula
+(celerity travel time + wetland roughness) was first developed and calibrated, reusing v1's
+cached DEM/routing grid, before it graduated into v2's own `s3a_build_T_v2.py`/
+`s3b_build_W_v2.py`. Its outputs (`calibration.csv`, `T_v2_compare.csv`,
+`models_v2_compare.csv`) are the old-vs-new comparison that justified building v2 — not v2's
+actual results (those are in `data/wetland-flood-model-v2/`).
 
 ## Pipeline
 1. `build_events_flow` (v1) / `s1_build_events_flow` (v2) — 15-min USGS discharge →
