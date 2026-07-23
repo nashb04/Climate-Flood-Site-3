@@ -19,7 +19,9 @@ The actual write-ups: `v1_report.pdf` → `v2_report.pdf` → `v3_report.pdf` (f
 reports, v3 current), `v3_full_regression_tables.pdf`, `v3_poster.pdf`/`.pptx` (the
 presented poster), plus the v1 variable-construction notes (`v1_variables.pdf`,
 `v1_wetland_variable.pdf`, `v1_rainfall_variable_summary.pdf`). `.tex` source is included
-alongside each PDF.
+alongside each PDF. `references/` holds the external papers the project's methodology is
+built on (Gourevitch/Gold/Garcia and Taylor & Druckenmiller are the core cites) — see
+[literature/references/README.md](literature/references/README.md).
 
 ### code/
 The wetland–flood effectiveness event model, in three versions — see
@@ -60,9 +62,9 @@ Two kinds of things, neither wired into the current (v3) model:
   soil, terrain, and precipitation (4km/800m).
 - `annual-wetland-connectivity-project/` — a **separate, currently-blocked** research
   thread (different unit of analysis: annual gauge-year panel, travel-time-weighted
-  wetland connectivity vs. causal flood response) that a collaborator ran independently.
-  Per its own handoff notes, the wetland effect isn't causally identified yet (blocked on
-  getting annual land-cover data). Code + status docs only — the full data/outputs
-  (~900 MB, regenerable) live in the team's Box folder, not in git.
+  wetland connectivity vs. causal flood response). Per its own handoff notes, the wetland
+  effect isn't causally identified yet (blocked on getting annual land-cover data). Code +
+  status docs only — the full data/outputs (~900 MB, regenerable) live in the team's Box
+  folder, not in git.
 
 See [archive/README.md](archive/README.md) for details.

@@ -4,10 +4,10 @@ Scripts and data that predate, or were never wired into, the current
 `code/wetland-flood-model-v3/` pipeline. Kept for reference in case any of it gets reused.
 
 ## ⭐ annual-wetland-connectivity-project/
-A **separate research thread**, run independently by a collaborator, with a different unit
-of analysis than the main model: instead of (gauge × storm-event), it's an **annual
-gauge-year panel** across 26+ SE Wisconsin gauges, testing whether a travel-time-weighted
-wetland connectivity metric (`W`) reduces annual flood-peak runoff depth, causally.
+A **separate research thread** with a different unit of analysis than the main model:
+instead of (gauge × storm-event), it's an **annual gauge-year panel** across 26+ SE
+Wisconsin gauges, testing whether a travel-time-weighted wetland connectivity metric (`W`)
+reduces annual flood-peak runoff depth, causally.
 
 **Status per its own handoff notes: not yet causally identified, and currently blocked.**
 The annual wetland series (LCMAP) barely changes year-to-year within a gauge, so two-way
